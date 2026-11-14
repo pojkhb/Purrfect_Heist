@@ -4,7 +4,7 @@
 const PH=window.PH,U=PH.U,W=PH.World,G=PH.GFX,H=G.h,T3=H.T3;
 const M=H.M,MB=H.MB,MT=H.MT,add=H.add,bx=H.bx,bl=H.bl,cy=H.cy,cn=H.cn,gp=H.gp,flat=H.flat,rb=H.rb,GEO=H.GEO;
 const EB={},ES={};
-const CANCOL={prologue:'#8fc3b4',kitchen:'#F6CD79',laundry:'#ff8f6a',museum:'#5a4a9a',market:'#ffd23f',moon:'#fff2c4',escape:'#fff2c4'};
+const CANCOL={training:'#ff9ec4',prologue:'#8fc3b4',kitchen:'#F6CD79',laundry:'#ff8f6a',museum:'#5a4a9a',market:'#ffd23f',moon:'#fff2c4',escape:'#fff2c4'};
 function basic(c,op,addv){return new T3.MeshBasicMaterial({color:c,transparent:true,opacity:op==null?1:op,depthWrite:false,side:T3.DoubleSide,blending:addv?T3.AdditiveBlending:T3.NormalBlending});}
 function tor(R,r,c,x,y,z,p){return add(new T3.TorusGeometry(R,r,6,12),c,1,1,1,x,y,z,p);}
 
@@ -107,19 +107,21 @@ function setTube(g,pts,rad){
 }
 function makeCat(L){
   const CG=catGeo(),o={},g=o.g=gp(),n=o.norm=gp(0,0,0,g),b=o.body=gp(0,0,0,n);
-  const skin=new T3.MeshStandardMaterial({vertexColors:true,roughness:.88}),line=new T3.MeshBasicMaterial({color:CATC.LINE,side:T3.BackSide});
-  const part=function(geo,hull,mat,p,x,y,z){const m=new T3.Mesh(geo,mat);m.position.set(x||0,y||0,z||0);m.castShadow=true;m.receiveShadow=true;p.add(m);
+  const skin=G.std({vertexColors:true,gradientMap:G.softGrad()}),line=new T3.MeshBasicMaterial({color:CATC.LINE,side:T3.BackSide});
+  const part=function(geo,hull,mat,p,x,y,z){const m=new T3.Mesh(geo,mat);m.position.set(x||0,y||0,z||0);m.castShadow=true;m.receiveShadow=false;p.add(m);   // 貓不接收陰影：小曲面上的陰影會變成條紋
     if(hull){const h=new T3.Mesh(hull,line);m.add(h);}return m;};
   part(CG.body,CG.bodyH,skin,b);
   [-1,0,1].forEach(function(s){const m=cn(.03,.08,CATC.CR,.3,.27-.03*Math.abs(s),s*.045,b);m.rotation.z=-2.3;m.castShadow=false;});   // 胸前毛束
-  const h=o.head=gp(.3,.43,0,b);
+  // 寵物卡通比例：頭放大約 1.45 倍、往上後方挪，身體看起來短短的
+  const h=o.head=gp(.27,.52,0,b);h.scale.setScalar(1.45);
   part(CG.head,CG.headH,skin,h);
   // 臉：大眼睛＋兩個高光、吻部兩團、下巴、粉紅鼻子、鬍鬚、腮紅
-  const eyeM=new T3.MeshStandardMaterial({color:CATC.EY,roughness:.25}),hiM=new T3.MeshBasicMaterial({color:'#ffffff'}),crM=M(CATC.CR),pkM=M(CATC.PK);
+  const eyeM=G.std({color:CATC.EY}),irM=G.std({color:'#4f8f7a'}),hiM=new T3.MeshBasicMaterial({color:'#ffffff'}),crM=M(CATC.CR),pkM=M(CATC.PK);
   [-1,1].forEach(function(s){
-    const e=new T3.Mesh(CG.ball,eyeM);e.scale.set(.026,.054,.042);e.position.set(.158,.028,s*.085);e.rotation.y=-s*.5;h.add(e);
-    const h1=new T3.Mesh(CG.ball,hiM);h1.scale.setScalar(.011);h1.position.set(.18,.052,s*.075);h.add(h1);
-    const h2=new T3.Mesh(CG.ball,hiM);h2.scale.setScalar(.005);h2.position.set(.18,.008,s*.096);h.add(h2);
+    const e=new T3.Mesh(CG.ball,eyeM);e.scale.set(.03,.066,.054);e.position.set(.156,.03,s*.084);e.rotation.y=-s*.5;h.add(e);
+    const ir=new T3.Mesh(CG.ball,irM);ir.scale.set(.012,.03,.032);ir.position.set(.176,.012,s*.082);ir.rotation.y=-s*.5;h.add(ir);   // 下半圈帶一點顏色的虹膜
+    const h1=new T3.Mesh(CG.ball,hiM);h1.scale.setScalar(.016);h1.position.set(.182,.06,s*.072);h.add(h1);
+    const h2=new T3.Mesh(CG.ball,hiM);h2.scale.setScalar(.007);h2.position.set(.182,.006,s*.1);h.add(h2);
     const mz=new T3.Mesh(CG.ball,crM);mz.scale.set(.045,.038,.042);mz.position.set(.162,-.058,s*.03);h.add(mz);
     const bl_=new T3.Mesh(CG.ball,MB(CATC.PK,.55));bl_.scale.set(.012,.022,.03);bl_.position.set(.13,-.045,s*.13);h.add(bl_);
     for(let k=-1;k<=1;k++){const w=new T3.Mesh(CG.wh,crM);w.scale.z=.15+(k===0?.02:0);w.position.set(.17,-.055+k*.012,s*.055);w.rotation.set(-s*k*.18,s>0?.3:Math.PI-.3,0);h.add(w);}
@@ -141,7 +143,7 @@ function makeCat(L){
   o.ta=.3;o.tc=.8;o.puff=1;o.still=0;o.sit=0;o.crouch=0;
   setCatTail(o,0,1);
   // 液體貓：一攤果凍，尾巴掛在邊上
-  const q=o.liq=gp(0,0,0,g),lm=new T3.MeshStandardMaterial({color:'#e8a868',transparent:true,opacity:.84,roughness:.35});
+  const q=o.liq=gp(0,0,0,g),lm=G.std({color:'#e8a868',transparent:true,opacity:.84,roughness:.35});
   o.puddle=add(GEO.ico2,lm,.4,.08,.34,0,.07,0,q);add(GEO.ico2,lm,.17,.11,.17,.16,.13,0,q);
   [-1,1].forEach(function(s){add(GEO.cone,lm,.05,.09,.05,.13,.25,s*.09,q);bl(.022,.026,.02,'#2b1b2e',.29,.15,s*.06,q);});
   add(GEO.cyl,lm,.03,.2,.03,-.36,.1,.1,q).rotation.z=.9;
@@ -172,13 +174,17 @@ const DOGCOL={shiba:'#d98a4a',nose:'#a8703f',ear:'#8f98ab',poodle:'#f6eee2',capt
 function makeDog(kind){
   const cg=kind==='corgi',hv=kind==='bulldog'||kind==='captain',o={},g=o.g=gp(),b=o.body=gp(0,0,0,g),TN=DOGCOL[kind],CR='#F6E7CF',BK='#2b1b2e';
   const wd=hv?1.25:1;
-  rb(cg?.84:.76,.46,.5*wd,.12,TN,0,.44,0,b);rb(.34,.36,.4*wd,.1,CR,.24,.38,0,b);
-  const h=o.head=gp(.38,.76,0,b);
-  rb(.42,.38,.42*wd,.1,TN,0,0,0,h);rb(.24,.15,.24,.05,CR,.2,-.08,0,h);
+  rb(cg?.84:.76,.46,.5*wd,.2,TN,0,.44,0,b);rb(.34,.36,.4*wd,.15,CR,.24,.38,0,b);
+  const h=o.head=gp(.36,.86,0,b);h.scale.setScalar(1.32);   // 寵物卡通比例：大頭
+  rb(.42,.38,.42*wd,.16,TN,0,0,0,h);rb(.24,.15,.24,.05,CR,.2,-.08,0,h);
   rb(kind==='nose'?.14:.08,kind==='nose'?.1:.06,kind==='nose'?.15:.09,.025,kind==='nose'?'#e2748a':BK,.32,-.04,0,h);
   [-1,1].forEach(function(s){
-    if(kind==='sleepwalk')bx(.02,.012,.06,BK,.21,.05,s*.095,h);else bl(.03,.036,.025,BK,.21,.05,s*.095,h);
-    const brow=bx(.02,.025,.08,BK,.21,.1,s*.1,h);brow.rotation.x=s*.35;brow.castShadow=false;   // 認真的眉毛
+    if(kind==='sleepwalk')bx(.02,.012,.07,BK,.21,.05,s*.095,h);
+    else{   // 大眼睛：白眼球＋大黑眼珠＋高光
+      bl(.03,.062,.052,'#ffffff',.2,.05,s*.098,h).castShadow=false;bl(.024,.048,.038,BK,.218,.044,s*.098,h).castShadow=false;
+      bl(.012,.014,.012,'#ffffff',.236,.066,s*.088,h).castShadow=false;
+    }
+    const brow=bx(.02,.025,.08,BK,.21,.13,s*.1,h);brow.rotation.x=s*.35;brow.castShadow=false;   // 認真的眉毛
     bl(.09,.08,.07,CR,.08,-.07,s*.15,h);
     if(kind==='ear')cn(.14,.46,TN,-.04,.34,s*.2,h);
     else if(kind==='poodle')bl(.12,.14,.1,'#ffffff',-.02,.1,s*.22,h);
@@ -196,7 +202,7 @@ function makeDog(kind){
   }
   else if(kind==='nose'){cn(.2,.16,'#7a4a2b',-.01,.24,0,h);bx(.2,.03,.3,'#5a3d24',.1,.17,0,h);}
   else if(kind==='poodle'){bl(.13,.12,.13,'#ffffff',-.02,.22,0,h);add(GEO.box,M('#ffd23f',{emissive:'#ffd23f',emissiveIntensity:1}),.1,.08,.14,.2,.2,0,h).castShadow=false;
-    o.beam=new T3.Mesh(new T3.CylinderGeometry(.08,1.4,3.6,10,1,true),MB('#fff2c4',.13,true));o.beam.rotation.z=Math.PI/2+.25;o.beam.position.set(2.0,-.25,0);h.add(o.beam);}
+    o.beam=new T3.Mesh(new T3.CylinderGeometry(.08,1.4,3.6,10,1,true),MB('#fff2c4',.13,true));o.beam.rotation.z=Math.PI/2+.25;o.beam.position.set(2.0/1.32,-.25/1.32,0);o.beam.scale.setScalar(1/1.32);h.add(o.beam);}   // 頭放大了，光束維持原本長度
   else if(kind==='captain'){cy(.2,.1,'#4a3a5c',-.01,.22,0,h);cy(.205,.035,'#F1DFC0',-.01,.18,0,h);bx(.2,.03,.36,'#4a3a5c',.14,.17,0,h);const f=H.fishMesh(h,M('#F3BC68'),.24);f.position.set(.2,.24,0);f.rotation.y=Math.PI/2;}
   else if(kind==='bulldog'){bx(.5,.12,.56,'#4a4f5a',0,.66,0,b);bx(.3,.1,.5,'#4a4f5a',-.2,.62,0,b);tor(.2,.045,'#2b1b2e',.3,.62,0,b).rotation.y=Math.PI/2;
     for(let i=0;i<5;i++)cn(.03,.08,'#dfe6ec',.3,.62+Math.cos(i*1.25)*.22,Math.sin(i*1.25)*.22,b);bl(.06,.03,.2,CR,.24,-.14,0,h);}
@@ -246,15 +252,15 @@ G.makeBoss=function(){
   bl(.6,.55,.6,TN,0,0,0,h);bl(.36,.25,.36,CR,.46,-.2,0,h);bl(.11,.09,.12,BK,.8,-.12,0,h);
   [-1,1].forEach(function(s){bl(.08,.1,.07,BK,.48,.14,s*.26,h);cn(.2,.42,TN,-.1,.52,s*.46,h);bl(.24,.22,.2,CR,.22,-.2,s*.42,h);});
   o.helm=gp(0,0,0,h);
-  add(GEO.ico2,new T3.MeshStandardMaterial({color:'#bfe0ff',transparent:true,opacity:.28,roughness:.1,depthWrite:false}),.82,.8,.82,.05,.05,0,o.helm).castShadow=false;
+  add(GEO.ico2,G.std({color:'#bfe0ff',transparent:true,opacity:.28,roughness:.1,depthWrite:false}),.82,.8,.82,.05,.05,0,o.helm).castShadow=false;
   tor(.72,.07,'#ffd23f',.05,-.38,0,o.helm).rotation.x=Math.PI/2;
-  o.lamp=add(GEO.box,new T3.MeshStandardMaterial({color:'#fff2c4',emissive:'#fff2c4',emissiveIntensity:.4}),.2,.14,.4,.68,.52,0,o.helm);
-  o.frost=add(GEO.ico2,new T3.MeshStandardMaterial({color:'#eefaff',transparent:true,opacity:.86,roughness:.6,flatShading:true}),.86,.84,.86,.05,.05,0,h);o.frost.castShadow=false;
+  o.lamp=add(GEO.box,G.std({color:'#fff2c4',emissive:'#fff2c4',emissiveIntensity:.4}),.2,.14,.4,.68,.52,0,o.helm);
+  o.frost=add(GEO.ico2,G.std({color:'#eefaff',transparent:true,opacity:.86,roughness:.6,flatShading:true}),.86,.84,.86,.05,.05,0,h);o.frost.castShadow=false;
   o.legs=[];
   [[.6,.42],[.6,-.42],[-.6,.42],[-.6,-.42]].forEach(function(q){const l=gp(q[0],.75,q[1],g);cy(.19,.75,TN,0,-.37,0,l);bl(.23,.12,.26,CR,.04,-.7,0,l);o.legs.push(l);});
   const t=o.tail=gp(-.95,1.5,0,b);o.seg=[];
   for(let i=0;i<6;i++){const s=bl(.2-i*.018,.2-i*.018,.2-i*.018,i===5?CR:TN,-i*.3,i*.12,0,t);o.seg.push(s);}
-  o.fish=add(GEO.ico,new T3.MeshStandardMaterial({color:'#7fd0e6',emissive:'#7fd0e6',emissiveIntensity:.9,flatShading:true}),.32,.2,.06,-1.75,.9,0,t);
+  o.fish=add(GEO.ico,G.std({color:'#7fd0e6',emissive:'#7fd0e6',emissiveIntensity:.9,flatShading:true}),.32,.2,.06,-1.75,.9,0,t);
   o.gun=gp(.9,1.0,.75,b);bx(.5,.2,.2,'#5a6a8a',0,0,0,o.gun);tor(.14,.06,'#ffd23f',-.1,.16,0,o.gun);
   o.fish.visible=false;o.frost.visible=false;
   return o;
@@ -344,7 +350,7 @@ EB.ped=function(e,L){
   // 主罐是畫面焦點：暖金光暈＋一圈慢慢轉的亮點（只有主罐、有效貓縫和重要互動物會發光）
   e.halo=flat(GEO.circ,basic('#F6CD79',.32,true),0,y0+.03,0,g);e.halo.scale.set(.55,.55,1);
   e.spark=gp(0,y0+.45,0,g);for(let i=0;i<5;i++){const a=i*1.2566,m=add(GEO.ico,M('#F6CD79',{emissive:'#F6CD79',emissiveIntensity:1}),.025,.025,.025,Math.cos(a)*.32,Math.sin(i*2.1)*.06,Math.sin(a)*.32,e.spark);m.castShadow=false;}
-  e.dome=add(GEO.ico2,new T3.MeshStandardMaterial({color:'#bfe0ff',transparent:true,opacity:.35,roughness:.1,depthWrite:false}),.36,.42,.36,0,y0+.22,0,g);e.dome.castShadow=false;
+  e.dome=add(GEO.ico2,G.std({color:'#bfe0ff',transparent:true,opacity:.35,roughness:.1,depthWrite:false}),.36,.42,.36,0,y0+.22,0,g);e.dome.castShadow=false;
 };
 EB.sw=function(e){
   const g=e.g=gp(e.x,0,e.y),m=e.model||'lever';
@@ -419,7 +425,7 @@ EB.mover=function(e){
 };
 EB.wind=function(e){
   e.g=gp();e.pad=flat(GEO.ring,basic('#dff6ff',.7),e.from[0],.04,e.from[1],e.g);e.pad.scale.set(.6,.6,1);
-  e.bub=[];for(let i=0;i<4;i++){const m=new T3.Mesh(GEO.ico2,new T3.MeshStandardMaterial({color:'#dff6ff',transparent:true,opacity:.35,roughness:.1,depthWrite:false}));e.g.add(m);e.bub.push(m);}
+  e.bub=[];for(let i=0;i<4;i++){const m=new T3.Mesh(GEO.ico2,G.std({color:'#dff6ff',transparent:true,opacity:.35,roughness:.1,depthWrite:false}));e.g.add(m);e.bub.push(m);}
 };
 EB.plant=function(e){
   const g=e.g=gp(e.x,0,e.y);cy(.3,.4,'#b9773c',0,.2,0,g);cy(.34,.07,'#d98c45',0,.42,0,g);
@@ -609,7 +615,7 @@ G.buildWorld=function(L){
     G.plateM=gp(0,.3,0,G.plate);add(GEO.box,M('#dff6ff',{emissive:'#bfe0ff',emissiveIntensity:.4,roughness:.1}),.14,1.8,2.2,0,.9,0,G.plateM);bx(.18,.12,2.3,'#ffd23f',0,1.84,0,G.plateM);bx(.18,.12,2.3,'#ffd23f',0,.02,0,G.plateM);
     const rr=flat(GEO.ring,basic('#8fe3b4',.6),C.rest[0],.03,C.rest[1]);rr.scale.set(C.rest[2],C.rest[2],1);
     const rd=flat(GEO.circ,basic('#8fe3b4',.14),C.rest[0],.025,C.rest[1]);rd.scale.set(C.rest[2],C.rest[2],1);
-    G.locks=[-1,0,1].map(function(i){const m=add(GEO.box,new T3.MeshStandardMaterial({color:'#ef5d50',emissive:'#ef5d50',emissiveIntensity:.5,flatShading:true}),.34,.4,.2,15.5+i*.7,2.0,4.5);m.castShadow=false;return m;});
+    G.locks=[-1,0,1].map(function(i){const m=add(GEO.box,G.std({color:'#ef5d50',emissive:'#ef5d50',emissiveIntensity:.5,flatShading:true}),.34,.4,.2,15.5+i*.7,2.0,4.5);m.castShadow=false;return m;});
     G.frostBeam=null;
   }
 };
@@ -622,6 +628,7 @@ function syncCat(L,P,t,dt){
   if(S.mode==='cut'&&G.cutCat)vis=true;
   c.g.visible=vis;if(!vis)return;
   c.g.position.set(P.x,(P.fz||0),P.y);c.g.rotation.y=-P.face;
+  {const mk=P.morph>0?Math.sin((1-P.morph/0.35)*Math.PI):0;c.g.scale.set(1+mk*.3,1-mk*.22,1+mk*.3);}
   // 實測：窄處鏡頭被牆推到貼著貓時，整個畫面變成貓的後腦 → 太近就先不畫貓
   if(G.camera&&S.mode==='play'){const cp=G.camera.position;if(Math.hypot(cp.x-P.x,cp.y-.35*G.catS,cp.z-P.y)<.42*G.catS+.12){c.g.visible=false;return;}}
   const big=P.form==='mini'||P.form==='giant'||P.form==='normal';

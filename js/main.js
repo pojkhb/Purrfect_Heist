@@ -26,7 +26,7 @@ Game.start=function(id){
   loadLevel(id);
   S.mode='play';
   if(id==='escape')AU.music('boss');else AU.mood('calm');
-  if(id!=='escape'){PH.SAVE.at=id;PH.saveGame();}
+  if(id!=='escape'&&!def.trial){PH.SAVE.at=id;PH.saveGame();}
   UI.say(def.title+'　'+def.name,4);
   UI.lock();
 };
@@ -56,7 +56,7 @@ Game.caught=function(why,dog){
   if(L.f.bossOn&&PH.Boss.active){PH.Boss.fault(why==='pounce'||why==='box'?'minion':why);return;}
   L.stats.caught++;S.mode='caught';AU.play('caught');PH.FX.shake(8);UI.clearInput();PH.Seams.end();
   UI.caught(why==='collapse'?'被罐蓋追上了！':'被逮到了！',U.pick(GAGS[why]||GAGS.pounce),
-    (WHY[why]||'')+(L.def.tutorial?'　序章不會懲罰你：回到起點，學會的縮小會保留。':L.theft?'　會回到偷罐後的檢查點，罐罐還在身上。':'　會回到最近的安全點，已完成的機關會保留。'));
+    (WHY[why]||'')+(L.def.trial?'　體驗關不會懲罰你：回到這一站的開頭再試一次。':L.def.tutorial?'　序章不會懲罰你：回到起點，學會的縮小會保留。':L.theft?'　會回到偷罐後的檢查點，罐罐還在身上。':'　會回到最近的安全點，已完成的機關會保留。'));
 };
 Game.bossRetry=function(){
   S.mode='caught';UI.clearInput();PH.Seams.end();
@@ -99,7 +99,7 @@ Game.finish=function(box){
     SV.cleared[def.id]=1;
     const st=L.stats,b=SV.best[def.id];
     if(!b||st.time<b.time)SV.best[def.id]={time:Math.round(st.time),caught:st.caught};
-    if(def.next&&def.next!=='escape')SV.at=def.next;
+    if(def.next&&def.next!=='escape'&&!def.trial)SV.at=def.next;
     PH.saveGame();AU.play('unlock');
     showResult(unlock);
   });
@@ -120,7 +120,7 @@ function showResult(unlock){
   const forms=Object.keys(st.forms).map(function(k){return PH.FORMS[k].name;}).join('、')||'普通貓';
   UI.result({title:def.title+'完成　'+(def.canName||'練習地圖罐')+'到手',
     rows:[['時間',U.fmtTime(st.time)],['被發現',st.detected+' 次'],['被逮到',st.caught+' 次'],['落水',st.falls+' 次'],['用過的形態',forms],['畫出的貓縫',st.seams+' 組'],['極限鑽縫',st.extreme+' 次']],
-    rank:rank(st),unlock:unlock,practice:L.by.exit.length>0,nextLabel:def.next?'直接前往下一關':'看結局'});
+    rank:rank(st),unlock:unlock,practice:L.by.exit.length>0,nextLabel:def.trial?(Object.keys(PH.SAVE.cleared).some(function(k){return k!=='training';})?'回到冒險':'開始正式冒險'):def.next?'直接前往下一關':'看結局'});
 }
 // 安全練習區：沒有狗，試用剛解鎖的能力
 Game.practice=function(){
@@ -134,8 +134,10 @@ Game.practice=function(){
   PH.GFX.cut=null;S.mode='play';S.camSnap=true;UI.lock();
   UI.say('安全練習區開放了：這裡沒有狗。試試新能力，再從亮著的出口前往下一關。',7);
 };
+Game.adventure=function(){Game.start(PH.SAVE.at&&PH.LEVELS[PH.SAVE.at]&&!PH.LEVELS[PH.SAVE.at].trial?PH.SAVE.at:'prologue');};
 Game.next=function(){
   const def=PH.L.def;
+  if(def.trial){Game.adventure();return;}
   if(def.next)Game.start(def.next);else Game.ending();
 };
 // 取得宇宙第一罐 → 月亮消氣逃亡

@@ -8,11 +8,32 @@ let R3,scene,camera,root,sky,hemi,sun,amb,V3,cw=1,ch=1,cv,ov,ox,dpr=1;
 const MATS={},GEO={};
 const FONT="'Chiron GoRound TC','Noto Sans TC','Microsoft JhengHei','PingFang TC',sans-serif";
 
-// 霧面材質：柔和明暗、不反光（手繪童話感，不是亮面塑膠）
+/* 畫風：寵物卡通感（粉嫩、明亮、三階卡通明暗）。
+   所有實體材質都經過 STD：用 MeshToonMaterial＋三階漸層，暗面不會死黑，看起來像卡通賽璐珞上色。
+   舊程式傳進來的 roughness／metalness 這類寫實參數直接略過。 */
+let GRAD=null;
+function gradTex(){
+  if(GRAD)return GRAD;
+  // 背光面（法線背對太陽）完全不吃直射光，只靠環境光：不然自身陰影會在背光牆上變成一塊塊黑斑（實測罐頭月亮）
+  const d=new Uint8Array([0,0,0,255, 0,0,0,255, 178,178,178,255, 255,255,255,255]);
+  GRAD=new T3.DataTexture(d,4,1,T3.RGBAFormat);GRAD.minFilter=GRAD.magFilter=T3.NearestFilter;GRAD.generateMipmaps=false;GRAD.needsUpdate=true;
+  return GRAD;
+}
+function STD(o){
+  const m=new T3.MeshToonMaterial({gradientMap:gradTex()});
+  for(const k in o){if(m[k]===undefined)continue;if(k==='color'||k==='emissive')m[k].set(o[k]);else m[k]=o[k];}
+  return m;
+}
+G.std=function(o){return STD(o);};
+// 角色身上用柔和版漸層：同樣的明暗，但線性過渡，燈籠點光不會在毛上切出一條條色帶
+let SOFT=null;
+G.softGrad=function(){if(!SOFT){SOFT=gradTex().clone();SOFT.minFilter=SOFT.magFilter=T3.LinearFilter;SOFT.needsUpdate=true;}return SOFT;};
+// 卡通明暗的暗面不會掉到 0，整體會比寫實材質亮很多；所有燈光乘上這個係數，避免畫面洗白、輝光吃掉整隻貓（實測調出來的）
+const LK=0.72;
 function M(c,o){
   if(typeof c!=='string')return c;
   const key=c+(o?JSON.stringify(o):'');
-  return MATS[key]||(MATS[key]=new T3.MeshStandardMaterial(Object.assign({color:c,flatShading:false,roughness:0.92,metalness:0},o||{})));
+  return MATS[key]||(MATS[key]=STD(Object.assign({color:c},o||{})));
 }
 /* ---------- 程序手繪貼圖：灰階為主，顏色由材質決定；同一種貼圖全遊戲共用 ---------- */
 const TEX={};
@@ -91,7 +112,7 @@ function softMat(c,op){return new T3.MeshBasicMaterial({color:c,map:soft(),trans
 // 帶手繪貼圖的霧面材質
 function MT(c,kind,o){
   const key='t'+kind+c+(o?JSON.stringify(o):'');
-  return MATS[key]||(MATS[key]=new T3.MeshStandardMaterial(Object.assign({color:c,map:paint(kind),roughness:0.95,metalness:0},o||{})));
+  return MATS[key]||(MATS[key]=STD(Object.assign({color:c,map:paint(kind)},o||{})));
 }
 /* ---------- 圓角方塊：家具、櫃子、狗的方正輪廓都用它（幾何依尺寸快取） ---------- */
 const RBG={};
@@ -140,7 +161,7 @@ G.h={M:M,MB:MB,MT:MT,fishMesh:fishMesh,add:add,bx:bx,bl:bl,cy:cy,cn:cn,gp:gp,fla
 const LIGHT_CAP=6;
 function pointLight(c,int,dist,x,y,z,p){
   if(PH.opt.lowfx||G.lanterns>=LIGHT_CAP)return null;
-  G.lanterns++;const l=new T3.PointLight(c,int,dist,1.6);l.position.set(x,y,z);(p||G.cur).add(l);return l;
+  G.lanterns++;const l=new T3.PointLight(c,int*LK,dist,1.6);l.position.set(x,y,z);(p||G.cur).add(l);return l;
 }
 
 /* ---------- 給關卡裝飾用的工具組 ---------- */
@@ -232,7 +253,7 @@ const B=G.kit={
     return g;
   },
   bubble:function(x,y,z,r){
-    const m=new T3.Mesh(GEO.ico2,new T3.MeshStandardMaterial({color:'#dff6ff',transparent:true,opacity:.3,roughness:.1,depthWrite:false}));
+    const m=new T3.Mesh(GEO.ico2,STD({color:'#dff6ff',transparent:true,opacity:.3,roughness:.1,depthWrite:false}));
     m.scale.set(r,r,r);m.position.set(x,y,z);G.cur.add(m);
     G.anim.push(function(t){m.position.y=y+Math.sin(t*.9+x*2)*.25;m.position.x=x+Math.sin(t*.4+z)*.2;});
     return m;
@@ -334,7 +355,7 @@ G.init=function(canvas,overlay){
   hemi=new T3.HemisphereLight('#fff','#888',0.7);scene.add(hemi);
   amb=new T3.AmbientLight('#000',1);scene.add(amb);
   sun=new T3.DirectionalLight('#fff',0.6);scene.add(sun);scene.add(sun.target);
-  sun.castShadow=!PH.opt.lowfx;const sm=PH.mobile?1024:2048;sun.shadow.mapSize.set(sm,sm);sun.shadow.bias=-0.0006;sun.shadow.normalBias=0.02;
+  sun.castShadow=!PH.opt.lowfx;const sm=PH.mobile?1024:2048;sun.shadow.mapSize.set(sm,sm);sun.shadow.bias=-0.0006;sun.shadow.normalBias=0.045;   // 卡通明暗下陰影痤瘡（條紋）比較明顯，偏移加大
   // 漸層天空球
   const sg=new T3.SphereGeometry(180,24,12);sg.setAttribute('color',new T3.BufferAttribute(new Float32Array(sg.attributes.position.count*3),3));
   sky=new T3.Mesh(sg,new T3.MeshBasicMaterial({vertexColors:true,side:T3.BackSide,fog:false,depthWrite:false}));scene.add(sky);
@@ -466,11 +487,12 @@ G.load=function(L){
   const def=L.def,pal=def.pal,mood=def.mood,w=L.w,h=L.h;
   scene.fog=new T3.Fog(pal.fog,pal.fogNear,pal.fogFar);
   setSky(pal.sky,pal.sky2||pal.fog);
-  hemi.color.set(mood.hemi[0]);hemi.groundColor.set(mood.hemi[1]);hemi.intensity=mood.hemi[2];
-  amb.color.set(mood.amb||'#000000');amb.intensity=mood.amb?(mood.ambI||0.6):0;
+  hemi.color.set(mood.hemi[0]);hemi.groundColor.set(mood.hemi[1]);const lk=mood.dark?0.9:LK;   // 夜景關本來就暗，係數少打一點
+  hemi.intensity=mood.hemi[2]*lk;
+  amb.color.set(mood.amb||'#000000');amb.intensity=mood.amb?(mood.ambI||0.6)*lk:0;
   // 偷罐後的警戒色：環境光慢慢偏向珊瑚紅並微微脈動（只有設定了 mood.alarm 的關卡）
   G.moodK=0;G.moodBase=new T3.Color(mood.hemi[0]);G.moodAlarm=mood.alarm?new T3.Color(mood.alarm):null;
-  sun.color.set(mood.sun[0]);sun.intensity=mood.sun[1];
+  sun.color.set(mood.sun[0]);sun.intensity=mood.sun[1]*lk;
   const sp=mood.sun[2];sun.position.set(sp[0],sp[1],sp[2]);sun.target.position.set(w/2,0,h/2);
   const sc=sun.shadow.camera,hs=Math.max(w,h)*0.62+4;sc.left=-hs;sc.right=hs;sc.top=hs;sc.bottom=-hs;sc.near=1;sc.far=120;sc.updateProjectionMatrix();
   sun.position.set(w/2+(sp[0]-w/2)*1.2,sp[1]*1.6,h/2+(sp[2]-h/2)*1.2);
@@ -482,7 +504,7 @@ G.load=function(L){
     if(fl!=null)tiles.push({c:c,r:r,fl:fl,y:-.15,ty:-.15});
   }
   G.tiles=tiles;
-  const fm=new T3.InstancedMesh(new T3.BoxGeometry(.985,.3,.985),new T3.MeshStandardMaterial({color:'#ffffff',map:paint(pal.floorTex||'plank'),roughness:.95}),Math.max(1,tiles.length));
+  const fm=new T3.InstancedMesh(new T3.BoxGeometry(.985,.3,.985),STD({color:'#ffffff',map:paint(pal.floorTex||'plank'),roughness:.95}),Math.max(1,tiles.length));
   fm.receiveShadow=true;fm.frustumCulled=false;
   const col=new T3.Color();G.mtx=new T3.Matrix4();
   tiles.forEach(function(q,i){
@@ -517,7 +539,7 @@ G.load=function(L){
   if(pal.liquid){
     // 湯／水面：簡化平面＋緩慢流動的手繪漩渦，不做流體模擬
     const lt=paint('swirl').clone();lt.needsUpdate=true;lt.wrapS=lt.wrapT=T3.RepeatWrapping;lt.repeat.set((w+30)/3,(h+30)/3);
-    G.liquid=add(GEO.box,new T3.MeshStandardMaterial({color:pal.liquid,map:lt,roughness:.55,transparent:true,opacity:.94}),w+30,.3,h+30,w/2,pal.liquidY,h/2);
+    G.liquid=add(GEO.box,STD({color:pal.liquid,map:lt,roughness:.55,transparent:true,opacity:.94}),w+30,.3,h+30,w/2,pal.liquidY,h/2);
     G.liquid.castShadow=false;G.ly=pal.liquidY;G.liqTex=lt;
   }
   // 地基：關卡外圍的底色

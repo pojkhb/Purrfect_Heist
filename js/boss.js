@@ -37,7 +37,7 @@ B.start=function(){
 function startPhase(n){
   const L=PH.L;
   B.phase=n;clear();B.x=C.start[0];B.y=C.start[1];B.ang=Math.PI/2;
-  ['fish','ringrun','lever1ready','lever2ready'].forEach(function(k){W.set(k,false);});
+  ['fish','ringrun','lever1ready','lever2ready','p1','p2','p3'].forEach(function(k){W.set(k,false);});   // 上一階段的機關收起來，不會在第三階段還按得到魚影投射器
   W.set('p'+n);
   for(const d of L.dogs)if(d.id==='minion')d.active=false;
   if(n===3)PH.Dogs.spawnAt('p3');
@@ -114,8 +114,8 @@ B.usePath=function(){
 B.usePump=function(){
   if(B.coldT>0){say('冷卻泵已經在運轉，低溫區在場地東側。',3);return;}
   if(B.coldCd>0){say('冷卻泵重新準備中……',3);PH.AU.play('no');return;}
-  B.coldT=15*am();PH.AU.play('whoosh');
-  say('冷卻泵接通！東側出現短暫的低溫區。回到場上，把總督引到低溫區上面。',7);
+  B.coldT=20*am();PH.AU.play('whoosh');
+  say('冷卻泵接通！東側出現低溫區（藍色圓圈）。在圓圈旁邊叫一聲（空白鍵），或把喵聲投射進圓圈，總督會直接走過去。',8);
 };
 B.objective=function(){
   const L=PH.L,E=L.E;
@@ -135,8 +135,8 @@ B.objective=function(){
   if(!L.f.p3door)return {t:lk+'迷你貓鑽南東側道，打開冷卻室門鎖',x:E.p3door.x,y:E.p3door.y};
   if(!L.f.p3press)return {t:lk+'巨大貓壓住南側的開罐器壓台',x:E.p3press.x,y:E.p3press.y};
   if(L.f.shell)return {t:lk+'拉下南側最後的拉桿！',x:E.lever3.x,y:E.lever3.y};
-  if(B.frostT>0)return {t:lk+'站到中央卡榫另一側叫一聲，引結霜的總督撞上去',x:C.peg[0]-4,y:C.peg[1]};
-  if(B.coldT>0)return {t:lk+'把總督引到東側的低溫區上',x:C.cold[0],y:C.cold[1]};
+  if(B.frostT>0&&(B.state==='frost'||B.blind))return {t:lk+'總督結霜看不見！站到中央卡榫另一側（西邊）叫一聲',x:C.peg[0]-4,y:C.peg[1]};
+  if(B.coldT>0)return {t:lk+'在低溫區旁叫一聲（或投射喵聲），引總督走進去',x:C.cold[0],y:C.cold[1]};
   return {t:lk+'液體貓流進管線，接通冷卻泵',x:PH.P.x>21.5?E.pump.x:E.p3pipe.a[0],y:PH.P.x>21.5?E.pump.y:E.p3pipe.a[1]};
 };
 
@@ -226,11 +226,19 @@ function dashStep(dt){
     const nx=B.x+d.dx*st,ny=B.y+d.dy*st;
     if(B.phase===1&&!L.f.lever1ready&&U.dist(nx,ny,C.plate[0],C.plate[1])<1.55){plateHit();return;}
     if(B.phase===3&&B.blind&&U.dist(nx,ny,C.peg[0],C.peg[1])<1.65){pegHit();return;}
-    if(!free(nx,ny)){B.state='stun';B.timer=1.7;B.dash=null;B.blind=false;PH.AU.play('thud');PH.FX.shake(6);return;}     // 撞到掩體或邊緣，短暫停頓
+    if(!free(nx,ny)){
+      PH.AU.play('thud');PH.FX.shake(6);
+      if(B.blind&&B.frostT>0){blindMiss();return;}
+      B.state='stun';B.timer=1.7;B.dash=null;B.blind=false;return;}     // 撞到掩體或邊緣，短暫停頓
     B.x=nx;B.y=ny;d.left-=st;
     if(catchable()&&U.dist(B.x,B.y,P.x,P.y)<1.3+P.r*0.5){B.fault('pounce');return;}
-    if(d.left<=0){B.state='recover';B.timer=0.9;B.dash=null;B.blind=false;return;}
+    if(d.left<=0){if(B.blind&&B.frostT>0){blindMiss();return;}B.state='recover';B.timer=0.9;B.dash=null;B.blind=false;return;}
   }
+}
+// 結霜盲撲沒撞到卡榫：霜還沒化就回到結霜狀態，等下一聲
+function blindMiss(){
+  B.state='frost';B.dash=null;B.blind=false;B.frostAt=PH.L.t;
+  say('撲空了！總督還結著霜——站到中央卡榫的另一側，再叫一聲。',5);
 }
 function shockSectors(n){return n===0?[0,2,4]:[1,3,5];}
 function inSector(x,y,list){
@@ -245,6 +253,7 @@ B.update=function(dt){
   const g=B.gfx;
   B.tapeCd-=dt;B.projCd=Math.max(0,B.projCd-dt);
   B.histT-=dt;if(B.histT<=0){B.histT=0.5;B.hist.push({x:P.x,y:P.y});if(B.hist.length>5)B.hist.shift();}
+  if(B.frostT>0&&B.state!=='frost'){B.frostT=Math.max(0,B.frostT-dt);if(B.frostT<=0&&!B.blind&&B.state!=='stun')say('霜化了。冷卻泵會重新準備，再接通一次。',4);}
   const see=sees();
   if(see){B.known={x:P.x,y:P.y,t:L.t};B.seenT=0;}else B.seenT+=dt;
   if(L.f.shell&&L.f.p3press&&!L.f.lever3ready)W.set('lever3ready');
@@ -271,8 +280,8 @@ B.update=function(dt){
     // 慢慢逼近最後確認的位置，保持一段距離
     const t=B.seenT<4&&B.known?B.known:(B.sound&&L.t-B.sound.t<5?B.sound:null);
     if(t){
-      const dd=U.dist(B.x,B.y,t.x,t.y);
-      if(dd>5.5)walk(t.x,t.y,1.7,dt);else B.ang=U.turn(B.ang,Math.atan2(t.y-B.y,t.x-B.x),dt*2.6);
+      const dd=U.dist(B.x,B.y,t.x,t.y),lure=B.coldT>0&&B.frostT<=0&&U.dist(t.x,t.y,C.cold[0],C.cold[1])<C.cold[2]+3.2;
+      if(dd>(lure?0.4:5.5))walk(t.x,t.y,lure?2.4:1.7,dt);else B.ang=U.turn(B.ang,Math.atan2(t.y-B.y,t.x-B.x),dt*2.6);
     }else if(U.dist(B.x,B.y,C.c[0],C.c[1]+3)>2)walk(C.c[0],C.c[1]+3,1.3,dt);
     B.moveCd-=dt;
     if(B.restT>6){B.restT=0;begin('stomp',1.5);PH.UI.cue('總督盯上能量凹槽了！',C.rest[0],C.rest[1]);break;}
@@ -354,7 +363,10 @@ B.update=function(dt){
     // 結霜：看不見，只會朝聽到的聲音盲撲
     B.frostT-=dt;B.ang+=Math.sin(L.t*12)*dt*1.5;
     if(B.sound&&B.sound.t>B.frostAt+0.3&&B.sound.kind!=='step'){
-      B.tgt={x:B.sound.x,y:B.sound.y};B.blind=true;begin('pounce',1.0);B.frostAt=L.t+99;
+      let tx=B.sound.x,ty=B.sound.y;
+      const ap=Math.atan2(C.peg[1]-B.y,C.peg[0]-B.x),at=Math.atan2(ty-B.y,tx-B.x),dp=U.dist(B.x,B.y,C.peg[0],C.peg[1]);
+      if(Math.abs(U.angd(ap,at))<0.8&&U.dist(B.x,B.y,tx,ty)>dp-0.5){tx=C.peg[0];ty=C.peg[1];}
+      B.tgt={x:tx,y:ty};B.blind=true;begin('pounce',1.0);B.frostAt=L.t+99;
     }else if(B.frostT<=0){toIdle(2);say('霜化了。冷卻泵會重新準備，再接通一次。',4);}
     break;
   case 'spin':

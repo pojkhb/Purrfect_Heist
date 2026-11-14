@@ -73,7 +73,7 @@ PH.defLevel({
 /* ===================== 第一關：會打噴嚏的廚房 ===================== */
 const K_ISL=[[1,2,4,2],[6,3,11,7],[10,2,13,2],[9,11,12,12],[7,10,7,12]],K_SAFE=[[1,10,6,12],[1,13,16,17]];
 PH.defLevel({
-  id:'kitchen',title:'第一關',name:'會打噴嚏的廚房',size:[18,19],next:'laundry',
+  id:'kitchen',bgm:'kitchen',title:'第一關',name:'會打噴嚏的廚房',size:[18,19],next:'laundry',
   reward:'giant',canName:'膨膨鮪魚罐',trouble:'burp',dogBoat:true,coreR:3.2,cpTheft:[6.6,3.5],
   lockMsg:'秩序局廣播：罐罐失竊！三秒後用鍋蓋封住走廊。',
   // 美術：手繪童話感。青綠環境陰影＋局部暖金燈光；冰箱一帶冷青、主罐暖金（色票見 docs/art-direction.md）
@@ -196,7 +196,7 @@ PH.defLevel({
     B.rug(9,5.5,2.1,'#2f5550','#3d6b61');
     B.cyl(.012,1.0,'#3b2a22',9,2.7,5.5);B.lantern(9,2.1,5.5,'#F3BC68');
     /* ---- C 櫥櫃上的餅乾罐、牆邊的小盆栽 ---- */
-    const jar=new T3.Mesh(H.GEO.cyl,new T3.MeshStandardMaterial({color:'#dff3ee',transparent:true,opacity:.35,roughness:.3,depthWrite:false}));jar.scale.set(.24,.4,.24);jar.position.set(1.6,1.2,3.5);PH.GFX.cur.add(jar);
+    const jar=new T3.Mesh(H.GEO.cyl,PH.GFX.std({color:'#dff3ee',transparent:true,opacity:.35,roughness:.3,depthWrite:false}));jar.scale.set(.24,.4,.24);jar.position.set(1.6,1.2,3.5);PH.GFX.cur.add(jar);
     for(let i=0;i<4;i++)B.cyl(.12,.03,'#c98a4f',1.6+(i%2-.5)*.06,1.05+i*.07,3.5,.3*(i%2?1:-1));
     B.herb(2.6,1.0,6.5,1);B.herb(5.3,1.0,1.45,1.1);B.herb(10.2,1.0,1.4,.9,'#3d6b61');B.herb(14.6,1.0,10.5,1);
     /* ---- 牆上：夜窗（光片只落到檯面）、掛鍋、照片、時鐘、旗串 ---- */
@@ -243,7 +243,7 @@ PH.defLevel({
 
 /* ===================== 第二關：洗衣機裡的海底宇宙 ===================== */
 PH.defLevel({
-  id:'laundry',title:'第二關',name:'洗衣機裡的海底宇宙',size:[22,21],next:'museum',
+  id:'laundry',bgm:'laundry',title:'第二關',name:'洗衣機裡的海底宇宙',size:[22,21],next:'museum',
   reward:'liquid',canName:'流心鮭魚罐',trouble:'scent',coreR:3.4,cpTheft:[6.6,5.5],ambient:{period:11,on:6},
   lockMsg:'秩序局廣播：金庫失竊！脫水程序啟動，拖把犬出動。',fallMsg:'噗通！被水流沖回最近的浮台。',
   // 美術：靛藍水色、奶白泡泡、柔紫襪子礁、暖色安全燈

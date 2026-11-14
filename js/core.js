@@ -82,5 +82,6 @@ PH.loadSave=function(){
 PH.saveGame=function(){try{PH.SAVE.opt=Object.assign({},PH.opt);localStorage.setItem(KEY,JSON.stringify(PH.SAVE));}catch(e){}};
 PH.wipeSave=function(){const o=PH.SAVE.opt;PH.SAVE=defSave();PH.SAVE.opt=o;PH.saveGame();};
 PH.defLevel=function(d){PH.LEVELS[d.id]=d;};
-PH.has=function(f){return f==='normal'||!!PH.SAVE.unl[f]||!!PH.cheat;};
+// 體驗關（allForms）把所有能力借給玩家，但不寫進存檔
+PH.has=function(f){return f==='normal'||!!PH.SAVE.unl[f]||!!PH.cheat||!!(PH.L&&PH.L.def&&PH.L.def.allForms);};
 })();

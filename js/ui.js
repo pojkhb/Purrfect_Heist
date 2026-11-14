@@ -38,6 +38,54 @@ UI.audioState=function(){
 };
 UI.setCursor=function(x,y){vc.x=x;vc.y=y;};
 
+
+/* ---------- 形態圖示：每種形態一隻不同狀態的咪嚕（按鈕、HUD、變身時的大圖都用這組） ---------- */
+const LN='stroke="#2b1b2e" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"';
+function face(col,eye,ec){   // 標準貓臉：耳朵、大眼睛＋高光、粉鼻子、ω 嘴
+  ec=ec||'#2b1b2e';
+  return '<path d="M10 21 L12 6 L21 14 Q24 13 27 14 L36 6 L38 21 Q42 29 37 35 Q31 42 24 42 Q17 42 11 35 Q6 29 10 21Z" fill="'+col+'" '+LN+'/>'+
+    '<path d="M14 11 L19.5 15 L15 17Z M34 11 L28.5 15 L33 17Z" fill="#f4a8b4"/>'+
+    '<ellipse cx="17.2" cy="26" rx="'+eye+'" ry="'+(eye*1.3)+'" fill="'+ec+'"/><ellipse cx="30.8" cy="26" rx="'+eye+'" ry="'+(eye*1.3)+'" fill="'+ec+'"/>'+
+    '<circle cx="18.4" cy="24.2" r="1.5" fill="#fff"/><circle cx="32" cy="24.2" r="1.5" fill="#fff"/><circle cx="16.4" cy="28" r=".7" fill="#fff"/><circle cx="30" cy="28" r=".7" fill="#fff"/>'+
+    '<ellipse cx="12.5" cy="31" rx="2.6" ry="1.5" fill="#f4a8b4" opacity=".7"/><ellipse cx="35.5" cy="31" rx="2.6" ry="1.5" fill="#f4a8b4" opacity=".7"/>'+
+    '<path d="M22.6 31 h2.8 l-1.4 1.7z" fill="#e7798f"/><path d="M24 32.7 q-1.8 2.4 -3.8 1 M24 32.7 q1.8 2.4 3.8 1" fill="none" stroke="#2b1b2e" stroke-width="1.4" stroke-linecap="round"/>';
+}
+const ORANGE='#F2A766';
+const FICON={
+  normal:face(ORANGE,3.6),
+  // 迷你：縮成一小顆，旁邊有亮晶晶
+  mini:'<g transform="translate(13 15) scale(.48)">'+face(ORANGE,4)+'</g>'+
+    '<path d="M8 10 l1.2 3 3 1.2 -3 1.2 -1.2 3 -1.2 -3 -3 -1.2 3 -1.2z M38 8 l.9 2.2 2.2 .9 -2.2 .9 -.9 2.2 -.9 -2.2 -2.2 -.9 2.2 -.9z" fill="#ffd23f"/>'+
+    '<path d="M6 40 h8 M34 40 h8" stroke="#7fd0e6" stroke-width="2.6" stroke-linecap="round"/>',
+  // 巨大：臉撐滿整格，四角往外的箭頭
+  giant:'<g transform="translate(-2.4 -1) scale(1.1)">'+face(ORANGE,3.4)+'</g>'+
+    '<path d="M3 9 l5 0 M3 9 l0 5 M45 9 l-5 0 M45 9 l0 5 M3 45 l5 0 M3 45 l0 -5 M45 45 l-5 0 M45 45 l0 -5" stroke="#ef5d50" stroke-width="2.6" stroke-linecap="round"/>',
+  // 液體：融化成一攤的貓，耳朵和眼睛浮在上面，邊緣往下滴，尾巴從旁邊捲出來
+  liquid:'<path d="M41 37 q6 -1 5 -8 q-.6 -3 -3 -2.4" fill="none" stroke="#2b1b2e" stroke-width="6" stroke-linecap="round"/>'+
+    '<path d="M41 37 q6 -1 5 -8 q-.6 -3 -3 -2.4" fill="none" stroke="'+ORANGE+'" stroke-width="3" stroke-linecap="round"/>'+
+    '<path d="M4 38 Q3 31 10 29.5 Q11 23 14 21 L15.5 12 L21 18.5 Q24 18 27 18.5 L32.5 12 L34 21 Q37 23 38 29.5 Q45 31 44 38 Q44 41.5 38 42 Q36 46 33.5 42 L16 42 Q13.5 47 11 42 Q4 42 4 38Z" fill="'+ORANGE+'" '+LN+'/>'+
+    '<path d="M17 15.5 L20 18.8 L17.4 19.6Z M31 15.5 L28 18.8 L30.6 19.6Z" fill="#f4a8b4"/>'+
+    '<ellipse cx="18.5" cy="28" rx="3" ry="3.4" fill="#2b1b2e"/><ellipse cx="29.5" cy="28" rx="3" ry="3.4" fill="#2b1b2e"/>'+
+    '<circle cx="19.5" cy="26.6" r="1.3" fill="#fff"/><circle cx="30.5" cy="26.6" r="1.3" fill="#fff"/>'+
+    '<path d="M22.8 32 h2.4 l-1.2 1.4z" fill="#e7798f"/><path d="M24 33.4 q-1.6 2 -3.2 .8 M24 33.4 q1.6 2 3.2 .8" fill="none" stroke="#2b1b2e" stroke-width="1.3" stroke-linecap="round"/>'+
+    '<path d="M9 34 q2 -4 6 -4.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".75"/>'+
+    '<ellipse cx="7.5" cy="45" rx="1.6" ry="2" fill="'+ORANGE+'" stroke="#2b1b2e" stroke-width="1.2"/><ellipse cx="25" cy="46" rx="1.3" ry="1.6" fill="'+ORANGE+'" stroke="#2b1b2e" stroke-width="1.2"/>',
+  // 影子：地上一片深紫剪影，只有金色眼睛亮著
+  shadow:'<ellipse cx="24" cy="42" rx="19" ry="4" fill="#140a26" opacity=".5"/>'+
+    '<path d="M10 21 L12 6 L21 14 Q24 13 27 14 L36 6 L38 21 Q42 29 37 35 Q31 42 24 42 Q17 42 11 35 Q6 29 10 21Z" fill="#2b1b3e" stroke="#7a5aa8" stroke-width="2" stroke-linejoin="round"/>'+
+    '<path d="M13.5 26 q3.7 -4.6 7.4 0 q-3.7 2.6 -7.4 0Z M27.1 26 q3.7 -4.6 7.4 0 q-3.7 2.6 -7.4 0Z" fill="#ffd23f"/>'+
+    '<ellipse cx="17.2" cy="25.3" rx=".9" ry="1.6" fill="#2b1b2e"/><ellipse cx="30.8" cy="25.3" rx=".9" ry="1.6" fill="#2b1b2e"/>'
+};
+UI.formIcon=function(f){return '<svg viewBox="0 0 48 48" aria-hidden="true">'+(FICON[f]||FICON.normal)+'</svg>';};
+const FKEYN={normal:1,mini:2,giant:3,liquid:4,shadow:5};
+// 變身時畫面中央跳出大圖示＋名稱
+UI.formFx=function(f){
+  const e=$('formFx');if(!e)return;
+  e.innerHTML=UI.formIcon(f)+'<b>'+PH.FORMS[f].name+'</b>';
+  e.hidden=false;e.classList.remove('go');void e.offsetWidth;e.classList.add('go');
+  clearTimeout(UI._ffx);UI._ffx=setTimeout(function(){e.hidden=true;},900);
+};
+
 /* ---------- HUD ---------- */
 const ALERT=['','一級騷動','二級封鎖','三級增援','四級搜查'];
 UI.sync=function(dt){
@@ -50,8 +98,15 @@ UI.sync=function(dt){
   set('formName',F.name);set('eNum',String(Math.round(P.energy)));
   $('ebar').style.width=Math.round(P.energy)+'%';$('formChip').classList.toggle('low',P.energy<20);
   let nf=0;   // 只顯示已解鎖的形態；只有普通貓時整排藏起來
-  PH.FORM_ORDER.forEach(function(f){const b=$('f_'+f),h=PH.has(f);if(h)nf++;show('f_'+f,h);b.setAttribute('aria-pressed',P.form===f?'true':'false');});
+  const shadeOk=PH.has('shadow')&&PH.World.isShade(Math.floor(P.x),Math.floor(P.y))&&!PH.World.lit(P.x,P.y);
+  PH.FORM_ORDER.forEach(function(f){
+    const b=$('f_'+f),h=PH.has(f);if(h)nf++;show('f_'+f,h);
+    b.setAttribute('aria-pressed',P.form===f?'true':'false');
+    const na=P.form!==f&&f!=='normal'&&(P.energy<8||(f==='shadow'&&!shadeOk)||!!P.hidden);
+    b.classList.toggle('na',na);
+  });
   show('forms',nf>1);
+  if(lastTxt.formIco!==P.form){lastTxt.formIco=P.form;$('formIco').innerHTML=UI.formIcon(P.form);}
   const ob=PH.Game.obj;set('goal',ob?ob.t:'');
   const s=SM.seam;show('seamChip',!!s);
   if(s)set('seamT',s.state==='build'?'建立中…':s.life.toFixed(1)+' 秒　剩 '+s.uses+' 次');
@@ -128,13 +183,14 @@ UI.title=function(){
 UI.levels=function(){
   const box=$('lvList');box.textContent='';
   const sv=PH.SAVE;let open=true;
-  PH.ORDER.forEach(function(id){
+  ['training'].concat(PH.ORDER).forEach(function(id){
     if(id==='escape')return;
     const d=PH.LEVELS[id],b=document.createElement('button'),done=!!sv.cleared[id],best=sv.best[id];
     b.textContent=d.title+'　'+d.name+(done?'　✓':'')+(best?'（'+U.fmtTime(best.time)+'）':'');
     b.disabled=!open&&!done;
     b.addEventListener('click',function(){PH.AU.init();goFull();PH.Game.start(id);});
     box.appendChild(b);
+    if(d.trial){b.disabled=false;b.textContent=d.title+'　'+d.name+'（教學，所有能力都能試）'+(done?'　✓':'');return;}   // 體驗關隨時都能玩，不擋後面的關卡
     if(!done)open=false;
   });
   const n=Object.keys(sv.collect).length,bw=Object.keys(sv.bowls).length;
@@ -322,11 +378,16 @@ UI.init=function(){
   bindBtn('btnMeow',meowDown,meowUp);
   bindBtn('btnSneak',function(){IN.sneakT=!IN.sneakT;$('btnSneak').setAttribute('aria-pressed',IN.sneakT?'true':'false');});
   bindBtn('btnItem',function(){PL.useItem();});
-  PH.FORM_ORDER.forEach(function(f){bindBtn('f_'+f,function(){PL.transform(f);});});
+  PH.FORM_ORDER.forEach(function(f){
+    const b=$('f_'+f);b.innerHTML=UI.formIcon(f)+'<span class="fk">'+FKEYN[f]+'</span><span class="fn">'+PH.FORMS[f].name.replace('貓','')+'</span>';
+    b.title=PH.FORMS[f].name+'（'+FKEYN[f]+'）';b.setAttribute('aria-label',PH.FORMS[f].name);
+    bindBtn('f_'+f,function(){PL.transform(f);});
+  });
   $('btnPause').addEventListener('click',function(){G.togglePause();});
   // 標題與選單
   $('btnRotOk').addEventListener('click',function(){stage.classList.add('portrait-ok');});
-  $('btnStart').addEventListener('click',function(){PH.AU.init();goFull();G.start(PH.SAVE.at&&PH.LEVELS[PH.SAVE.at]?PH.SAVE.at:'prologue');});
+  $('btnStart').addEventListener('click',function(){PH.AU.init();goFull();G.adventure();});
+  $('btnTrial').addEventListener('click',function(){PH.AU.init();goFull();G.start('training');});
   $('btnLevels').addEventListener('click',function(){UI.levels();});
   $('btnOpts').addEventListener('click',function(){UI.pause(true);});
   $('btnLvBack').addEventListener('click',function(){UI.title();});

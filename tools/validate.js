@@ -3,14 +3,14 @@
 const fs=require('fs'),path=require('path'),vm=require('vm');
 global.window=global;
 const root=path.join(__dirname,'..','js');
-['core.js','world.js','levels1.js','levels2.js'].forEach(f=>vm.runInThisContext(fs.readFileSync(path.join(root,f),'utf8'),{filename:f}));
+['core.js','world.js','levels0.js','levels1.js','levels2.js'].forEach(f=>vm.runInThisContext(fs.readFileSync(path.join(root,f),'utf8'),{filename:f}));
 const PH=global.PH,W=PH.World;
 const noop=()=>{};
 PH.Dogs={hearAll:noop,smellAll:noop,onTheft:noop,spawnAt:noop,routes:noop,any:()=>false,reset:noop,exitSearch:noop,stun:noop};
 PH.Seams={reset:noop};PH.Player={respawn:noop};PH.Boss=null;PH.Game={};
 const only=process.argv[2]&&!process.argv[2].startsWith('--')?process.argv[2]:null,showMap=process.argv.includes('--map');
 let bad=0;
-for(const id of PH.ORDER){
+for(const id of ['training'].concat(PH.ORDER)){
   if(only&&id!==only)continue;
   const def=PH.LEVELS[id];
   if(!def){console.log('!! 缺少關卡',id);bad++;continue;}

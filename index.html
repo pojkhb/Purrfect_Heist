@@ -19,7 +19,7 @@
   <div id="caps"></div>
 
   <div class="hud" id="hud" hidden>
-    <div class="chip" id="formChip"><span id="formName">普通貓</span><div class="bar"><i id="ebar"></i></div><span id="eNum">100</span></div>
+    <div class="chip" id="formChip"><span id="formIco"></span><span id="formName">普通貓</span><div class="bar"><i id="ebar"></i></div><span id="eNum">100</span></div>
     <div class="chip" id="sneakChip" hidden>輕腳中</div>
     <div class="chip goal" id="goal"></div>
     <div class="chip" id="seamChip" hidden>貓縫　<span id="seamT"></span></div>
@@ -33,6 +33,7 @@
     <button id="btnPause" aria-label="暫停">II</button>
   </div>
   <div id="toast" hidden></div>
+  <div id="formFx" hidden></div>
   <div id="prompt" hidden><span id="promptTxt"></span><i id="promptBar"></i></div>
   <div class="keys" id="keys" hidden></div>
   <div class="joy" id="joy" aria-label="移動搖桿" hidden><i></i></div>
@@ -56,7 +57,7 @@
       <p style="font-size:20px;font-weight:800">抓開宇宙的縫</p>
       <p class="en">Purrfect Heist: Seams of the Universe</p>
       <p id="titleSub">今晚整座宇宙都是我的罐罐</p>
-      <div class="row"><button id="btnStart">開始遊戲</button><button id="btnLevels">選擇關卡</button><button id="btnOpts">設定</button><button id="btnEgg" hidden>空罐</button></div>
+      <div class="row"><button id="btnStart">開始遊戲</button><button id="btnTrial">體驗關（教學）</button><button id="btnLevels">選擇關卡</button><button id="btnOpts">設定</button><button id="btnEgg" hidden>空罐</button></div>
       <p class="small" id="audioState">按「開始」會同時開啟聲音。</p>
       <button id="btnAudioRetry" hidden>重試聲音</button>
     </div>
@@ -145,6 +146,7 @@
 <script src="js/player.js"></script>
 <script src="js/dogs.js"></script>
 <script src="js/boss.js"></script>
+<script src="js/levels0.js"></script>
 <script src="js/levels1.js"></script>
 <script src="js/levels2.js"></script>
 <script src="js/audio.js"></script>

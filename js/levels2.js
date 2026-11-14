@@ -5,7 +5,7 @@ const PH=window.PH,U=PH.U,W=PH.World;
 
 /* ===================== 第三關：禁止做夢的博物館 ===================== */
 PH.defLevel({
-  id:'museum',title:'第三關',name:'禁止做夢的博物館',size:[22,21],next:'market',
+  id:'museum',bgm:'museum',title:'第三關',name:'禁止做夢的博物館',size:[22,21],next:'market',
   reward:'shadow',canName:'午夜墨魚罐',trouble:'glow',coreR:99,cpTheft:[11.5,2.6],
   lockMsg:'秩序局廣播：展櫃失竊！所有夢境甦醒，探照燈改掃主通道。',
   // 美術：深藍綠牆面、舊木與黃銅、琥珀展櫃、局部紫色夢境光
@@ -111,7 +111,7 @@ PH.defLevel({
 
 /* ===================== 第四關：倒著下雨的天空市場 ===================== */
 PH.defLevel({
-  id:'market',title:'第四關',name:'倒著下雨的天空市場',size:[24,21],next:'moon',
+  id:'market',bgm:'market',title:'第四關',name:'倒著下雨的天空市場',size:[24,21],next:'moon',
   reward:'echo',canName:'回音飛魚罐',trouble:'walk',coreR:99,cpTheft:[12,3],exitRoute:[[18.5,14.6,1],[17.6,17,1]],exitR:6,
   lockMsg:'收攤鐘響了！市場開始打烊折疊，三秒後拉起封鎖線。',
   // 美術：青綠與奶油色攤位、暖色布旗、倒落雨線、漂浮雲塊；童話木造，不做寫實城市

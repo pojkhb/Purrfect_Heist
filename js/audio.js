@@ -4,7 +4,17 @@
 'use strict';
 const PH=window.PH,AU=PH.AU;
 let AC=null,out=null,nbuf=null,voices=0;
-const TR={bgm:{src:'assets/bgm_four_silent_feet.mp4',el:null,k:0},boss:{src:'assets/boss_forbidden_can_of_stars.mp4',el:null,k:0}};
+// 每關各自的配樂（關卡資料的 bgm 欄位指定，沒指定就用一般 BGM）；用到才載入，不會一開始就下載全部
+const TR={
+  bgm:{src:'assets/bgm_four_silent_feet.mp4',el:null,k:0},
+  kitchen:{src:'assets/bgm_l1_kitchen.mp4',el:null,k:0},
+  laundry:{src:'assets/bgm_l2_laundry.mp4',el:null,k:0},
+  museum:{src:'assets/bgm_l3_museum.mp4',el:null,k:0},
+  market:{src:'assets/bgm_l4_market.mp4',el:null,k:0},
+  boss:{src:'assets/boss_forbidden_can_of_stars.mp4',el:null,k:0}
+};
+function levelTrack(){const b=PH.L&&PH.L.def&&PH.L.def.bgm;return b&&TR[b]?b:'bgm';}
+AU.levelTrack=levelTrack;
 let want=null,level=0.8,hiddenPause=false;
 AU.ready=false;AU.musicFail=false;AU.sfxFail=false;
 
@@ -20,14 +30,15 @@ AU.init=function(){
     catch(e){AC=null;AU.sfxFail=true;}
   }
   if(AC&&AC.state==='suspended')AC.resume();
-  for(const k in TR)if(!TR[k].el||TR[k].failed){TR[k].failed=false;mkTrack(TR[k]);}
+  for(const k in TR)if(TR[k].failed){TR[k].failed=false;mkTrack(TR[k]);}
   AU.musicFail=false;AU.ready=true;AU.setVol();
   if(want)playTrack(TR[want]);
   if(PH.UI.audioState)PH.UI.audioState();
 };
 AU.setVol=function(){if(out)out.gain.value=PH.opt.mute?0:PH.opt.sfx*0.75;};
 function playTrack(t){
-  if(!t.el||t.failed||hiddenPause)return;
+  if(!t||t.failed||hiddenPause)return;
+  if(!t.el)mkTrack(t);
   const p=t.el.play();
   if(p&&p.catch)p.catch(function(){AU.musicFail=true;if(PH.UI.audioState)PH.UI.audioState();});
 }
@@ -41,7 +52,7 @@ AU.mood=function(m){
   if(m==='boss'){AU.music('boss');level=1;return;}
   if(m==='off'){AU.music(null);return;}
   const bossOn=PH.Boss&&PH.Boss.active&&!PH.Boss.yield;
-  if(!(want==='boss'&&(bossOn||(PH.L&&PH.L.id==='escape'))))AU.music('bgm');
+  if(!(want==='boss'&&(bossOn||(PH.L&&PH.L.id==='escape'))))AU.music(levelTrack());
   level=m==='chase'?1:m==='escape'?0.9:0.72;
 };
 AU.tick=function(dt){

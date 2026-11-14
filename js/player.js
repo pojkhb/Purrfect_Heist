@@ -45,6 +45,7 @@ PL.transform=function(to,forced){
   const big=F[to].r>F[P.form].r;
   P.x=pos.x;P.y=pos.y;P.form=to;P.r=F[to].r;P.morph=0.35;
   L.stats.forms[to]=1;
+  if(PH.UI.formFx)PH.UI.formFx(to);
   PH.AU.play(to==='normal'?'back':to==='giant'?'grow':to==='mini'?'shrink':to==='liquid'?'splash2':'shade');
   PH.FX.poof(P.x,P.y,big?16:9,to==='shadow'?'#2b1b2e':to==='liquid'?'#7fd0e6':'#fff6e3');
   if(to==='giant'){PH.FX.shake(4);W.noise(P.x,P.y,5,'grow');}
