@@ -13,7 +13,7 @@ PH.defLevel({
   mood:{hemi:['#8fa6ff','#ffc890',0.55],sun:['#ffd9a0',0.5,[3,8,6]],amb:'#3a3f66'},
   ops:[['.',1,1,10,8],['.',11,7,12,7],['.',12,5,12,8],['H',5,1,5,2],['S',1,3,5,3],['L',5,4,5,4],['c',1,5,4,5],['C',5,5,5,8],['T',8,4,9,4]],
   legend:{S:{k:'solid',h:0.95,m:'sofa'},H:{k:'solid',h:2.2,m:'block',col:'#8a5a3c',top:'#a8714a'}},
-  start:{x:1.5,y:7.5,box:'home'},
+  start:{x:1.5,y:7.5,box:'home',yaw:0},   // 實測：原本朝北只看得到櫃子；改朝東，從紙箱縫第一眼就看到要吃的罐罐
   ents:[
     {t:'box',id:'home',x:1.5,y:7.5,safe:1},
     {t:'box',id:'window',x:1.5,y:1.5,finish:1,safe:1},
@@ -76,15 +76,19 @@ PH.defLevel({
   id:'kitchen',title:'第一關',name:'會打噴嚏的廚房',size:[18,19],next:'laundry',
   reward:'giant',canName:'膨膨鮪魚罐',trouble:'burp',dogBoat:true,coreR:3.2,cpTheft:[6.6,3.5],
   lockMsg:'秩序局廣播：罐罐失竊！三秒後用鍋蓋封住走廊。',
-  pal:{sky:'#8fd6f7',sky2:'#d8f1ff',fog:'#bfe6f7',fogNear:26,fogFar:70,wall:'#ffe2a8',trim:'#ffb07c',floor:['#bfe9f2','#fff7e6','#ffd9a0','#ffe9c4'],block:'#3fc1a5',top:'#fff6e3',liquid:'#f6992b',liquidY:-1.4,liquidRise:'theft'},
-  mood:{hemi:['#e6f6ff','#ffcf9e',0.7],sun:['#fff2d0',0.6,[24,15,-2]]},
+  // 美術：手繪童話感。青綠環境陰影＋局部暖金燈光；冰箱一帶冷青、主罐暖金（色票見 docs/art-direction.md）
+  pal:{sky:'#142B2B',sky2:'#315C53',fog:'#1f3b38',fogNear:15,fogFar:46,wall:'#E6D3AE',trim:'#805238',cap:'#F1DFC0',
+    floor:['#b07a50','#ba8459','#8f7a62','#998468'],block:'#805238',top:'#F1DFC0',liquid:'#E39A55',liquidY:-1.4,liquidRise:'theft'},
+  mood:{hemi:['#d9efe3','#315C53',0.8],sun:['#cfeee2',0.45,[24,15,-2]],amb:'#2c4f49',ambI:0.55,alarm:'#E77863'},
   ops:[['.',1,1,16,12],['H',1,1,1,1],['P',2,1,2,1],['H',3,1,3,1],['C',4,1,16,1],['K',11,1,12,1],
     ['C',1,3,3,3],['C',1,6,3,6],['C',3,5,3,5],['j',3,4,3,4],['T',7,4,10,6],['R',14,4,14,4],['L',6,8,6,8],['L',13,7,13,7],
     ['#',1,9,5,9],['C',14,10,16,10],['C',14,12,14,12],
     [',',2,13,2,13],[',',1,14,12,17],['C',4,14,4,14],['C',4,16,4,17],['~',7,14,8,17],[',',7,16,8,16]],
-  legend:{H:{k:'solid',h:2.2,m:'block',col:'#eaf6ff',top:'#cfe4f2'},P:{k:'solid',h:0.3,m:'block',col:'#cfe4f2',top:'#eaf6ff'},
-    K:{k:'solid',h:1.0,m:'block',col:'#b9c4cf',top:'#7fd0e6'},j:{k:'gap',h:1.0,lo:0.62,m:'gapblock',col:'#f3c98b'},
-    R:{k:'solid',h:1.5,m:'rack',see:1},T:{k:'gap',h:0.62,lo:0.5,m:'table',col:'#ff6f61'}},
+  // 圖例只換模型（m），k／h／lo／see 都跟原本一樣：碰撞、狗的視線、鏡頭碰撞不變。冰箱、水槽、餐桌在 build 裡整件做。
+  legend:{H:{k:'solid',h:2.2,m:'none'},P:{k:'solid',h:0.3,m:'none'},
+    K:{k:'solid',h:1.0,m:'none'},j:{k:'gap',h:1.0,lo:0.62,m:'gapblock',col:'#8a5a3e',top:'#F1DFC0'},
+    R:{k:'solid',h:1.5,m:'rack',see:1},T:{k:'gap',h:0.62,lo:0.5,m:'none'},
+    C:{k:'solid',h:1.0,m:'counter'},L:{k:'solid',h:0.55,m:'basket'}},
   start:{x:2.5,y:11.5,box:'home',yaw:0},
   ents:[
     {t:'box',id:'home',x:2.5,y:11.5,safe:1,finish:1},
@@ -152,18 +156,75 @@ PH.defLevel({
     if(L.can)return {t:'罐罐被放在地上，記得抱回來',x:L.can.x,y:L.can.y};
     return {t:'帶罐罐回安全紙箱（盤子→K3，或杯柄窄道）',x:2.5,y:11.5};
   },
+  // 場景分區：A 出生紙箱（左下，暖光）B 中央餐桌（主要遮擋）C 櫥櫃與餅乾罐隧道 D 冰箱與主罐 E 水槽與毛巾 F 偷罐後的濃湯
+  // 所有裝飾都放在牆面、檯面、天花板或實心格子上，不佔走道、不加碰撞
   build:function(B,L){
-    B.box(.14,.14,.03,'#ff6f61',1.4,1.5,2.02);B.box(.12,.12,.03,'#ffd23f',3.6,1.4,2.02);
-    B.cyl(.28,.24,'#ff6f61',6.5,1.16,1.5);B.cyl(.16,.2,'#e58f4e',9.5,1.14,1.5);B.ball(.26,.3,.26,'#5bc470',9.5,1.5,1.5);
-    B.box(2.4,.9,.05,'#d6f1ff',7,2.2,1.03).castShadow=false;B.box(2.4,.9,.05,'#d6f1ff',14,2.2,1.03).castShadow=false;
-    B.shaft(7,2.6,1.6,2.8,'#fff3c4');B.shaft(14,2.6,1.6,2.8,'#fff3c4');
+    const H=PH.GFX.h,T3=H.T3,MT=H.MT,M=H.M,MB=H.MB,WOOD='#805238',CREAM='#F1DFC0',TEAL='#315C53';
+    /* ---- D 冰箱與主罐：奶油色圓角老冰箱，略鼓，中間凹槽放罐罐（格子 1..3 × 第 1 列） ---- */
+    const fz=MT(CREAM,'plaster');
+    B.rbox(3.0,.92,1.0,.2,fz,2.5,1.76,1.5).scale.set(1.02,1,1.04);
+    B.rbox(1.0,1.32,1.0,.16,fz,1.5,.66,1.5).scale.set(1,1,1.04);B.rbox(1.0,1.32,1.0,.16,fz,3.5,.66,1.5).scale.set(1,1,1.04);
+    B.box(1.0,1.0,.06,M('#3a6d66',{emissive:'#86E0C2',emissiveIntensity:.16}),2.5,.8,1.06).castShadow=false;   // 凹槽內壁：冷青
+    B.rbox(1.0,.3,1.0,.04,'#cfd9d6',2.5,.15,1.5);
+    for(let i=0;i<4;i++)B.cone(.04,.12+i%2*.06,'#e8f6f4',2.15+i*.24,1.22,1.85,Math.PI);   // 凹槽頂的小冰柱
+    [[1.85,.85],[3.15,.85]].forEach(function(q){const f=H.fishMesh(null,M('#F3BC68'),.5);f.position.set(q[0],q[1],2.06);f.rotation.z=Math.PI/2;});
+    const fh=H.fishMesh(null,M('#F3BC68'),.6);fh.position.set(2.5,1.42,2.06);
+    [2.2,2.8].forEach(function(x){const n=new T3.Mesh(H.GEO.circ,MB('#2b1b2e',.85));n.scale.set(.07,.05,1);n.position.set(x,1.98,2.07);PH.GFX.cur.add(n);});   // 會打噴嚏的「鼻孔」通風口
+    B.box(.16,.1,.02,'#E77863',3.4,1.9,2.07);B.box(.12,.12,.02,'#86E0C2',1.6,1.75,2.07);   // 冰箱貼
+    [[1.2,1.15],[3.8,1.15],[1.2,1.9],[3.8,1.9]].forEach(function(q){B.cyl(.06,.06,'#5a3d24',q[0],.03,q[1]);});
+    B.light('#9fe8d6',.9,4.5,2.5,1.05,2.4);   // 冷青局部光
+    B.light('#F6CD79',.8,2.6,2.5,.75,2.05);   // 主罐暖金光
+    /* ---- E 水槽與毛巾：木櫃、陶瓷水槽、苔蘚、垂落植物（格子 11..12 × 第 1 列） ---- */
+    B.rbox(2.0,.86,.98,.05,MT(WOOD,'wood'),12,.45,1.5);B.rbox(2.04,.12,1.04,.04,MT(CREAM,'wood'),12,.94,1.5);
+    [11.5,12.5].forEach(function(x){B.rbox(.8,.56,.05,.025,MT('#9a6648','wood'),x,.44,2.0).rotation.z=(x>12?.02:-.015);const f=H.fishMesh(null,M('#F3BC68'),.32);f.position.set(x+.22,.6,2.035);});
+    B.rbox(1.3,.2,.74,.09,'#eef0ea',12,1.06,1.5);
+    const wtr=new T3.Mesh(H.GEO.plane,M('#3d6b61',{roughness:.4}));wtr.rotation.x=-Math.PI/2;wtr.scale.set(1.05,.52,1);wtr.position.set(12,1.13,1.5);PH.GFX.cur.add(wtr);
+    B.cyl(.035,.42,'#c9a24a',12,1.3,1.12);B.cyl(.03,.3,'#c9a24a',12,1.5,1.25,Math.PI/2);B.ball(.05,.05,.05,'#E77863',11.8,1.2,1.12);
+    [[11.3,1.15],[12.7,1.18],[11.4,1.85],[12.65,1.82]].forEach(function(q,i){B.ball(.09+i%2*.03,.035,.07,i%2?'#6E8D55':'#5d7d48',q[0],1.15,q[1]);});   // 苔蘚
+    B.hanger(12,2.25,1.55,.95);
+    /* ---- B 中央餐桌：主要的視線遮擋；桌腳略彎，桌巾垂到一半，桌下留給迷你貓（格子 7..10 × 4..6） ---- */
+    B.rbox(4.0,.12,3.0,.05,MT(WOOD,'wood'),9,.56,5.5);
+    const clothM=MT('#ffffff','cloth',{side:T3.DoubleSide});
+    const top=new T3.Mesh(H.GEO.plane,clothM);top.rotation.x=-Math.PI/2;top.scale.set(3.9,2.9,1);top.position.set(9,.625,5.5);top.receiveShadow=true;PH.GFX.cur.add(top);
+    [4.05,6.95].forEach(function(z){B.box(3.9,.25,.02,clothM,9,.5,z).castShadow=true;B.box(3.9,.03,.025,'#E77863',9,.39,z);});
+    [7.05,10.95].forEach(function(x){B.box(.02,.16,2.9,clothM,x,.545,5.5);});
+    [[7.3,4.3],[10.7,4.3],[7.3,6.7],[10.7,6.7]].forEach(function(q){
+      const sx=q[0]<9?-1:1,sz=q[1]<5.5?-1:1;
+      B.cyl(.06,.28,MT(WOOD,'wood'),q[0],.37,q[1],sz*.12,0,-sx*.12);B.cyl(.055,.26,MT(WOOD,'wood'),q[0]+sx*.03,.13,q[1]+sz*.03,-sz*.15,0,sx*.15);B.ball(.07,.04,.07,'#5a3d24',q[0]+sx*.05,.02,q[1]+sz*.05);
+    });
+    B.cyl(.3,.03,'#F1DFC0',8.2,.645,4.6);B.cyl(.3,.03,'#F1DFC0',9.6,.645,5.6);B.ball(.13,.13,.13,'#D99556',8.2,.76,4.6);B.cyl(.12,.14,'#3d6b61',9,.7,5);
+    B.rug(9,5.5,2.1,'#2f5550','#3d6b61');
+    B.cyl(.012,1.0,'#3b2a22',9,2.7,5.5);B.lantern(9,2.1,5.5,'#F3BC68');
+    /* ---- C 櫥櫃上的餅乾罐、牆邊的小盆栽 ---- */
+    const jar=new T3.Mesh(H.GEO.cyl,new T3.MeshStandardMaterial({color:'#dff3ee',transparent:true,opacity:.35,roughness:.3,depthWrite:false}));jar.scale.set(.24,.4,.24);jar.position.set(1.6,1.2,3.5);PH.GFX.cur.add(jar);
+    for(let i=0;i<4;i++)B.cyl(.12,.03,'#c98a4f',1.6+(i%2-.5)*.06,1.05+i*.07,3.5,.3*(i%2?1:-1));
+    B.herb(2.6,1.0,6.5,1);B.herb(5.3,1.0,1.45,1.1);B.herb(10.2,1.0,1.4,.9,'#3d6b61');B.herb(14.6,1.0,10.5,1);
+    /* ---- 牆上：夜窗（光片只落到檯面）、掛鍋、照片、時鐘、旗串 ---- */
+    [7,14].forEach(function(x){
+      B.rbox(1.7,1.1,.08,.03,MT(WOOD,'wood'),x,2.2,1.04);B.box(1.5,.92,.05,'#1c3f3c',x,2.2,1.07).castShadow=false;
+      B.box(.05,.92,.06,MT(WOOD,'wood'),x,2.2,1.08);B.box(1.5,.05,.06,MT(WOOD,'wood'),x,2.2,1.08);
+      B.glowBall(x+.45,2.45,1.1,.07,'#F1DFC0');
+      B.shaftAt(x,1.0,1.75,.75,1.6,'#bfe8dc',.05);
+    });
+    B.cyl(.02,2.6,'#c9a24a',5.6,1.95,1.1,0,0,Math.PI/2);
+    [[4.6,'#c4704f'],[5.3,'#a85a3c'],[6.1,'#c4704f']].forEach(function(q,i){B.cyl(.012,.18,'#3b2a22',q[0],1.86,1.1);B.cyl(.16-i*.02,.16,q[1],q[0],1.68,1.12);});
     B.photo(1.03,1.7,8,0);B.photo(16.97,1.7,4,Math.PI);B.clock(16.97,2.4,10.5,Math.PI);
-    B.bunting(7,1.1,16,1.1,2.75);
-    B.lantern(8.5,1.9,5,'#ffcf7a');
-    B.cyl(.3,.03,'#ffffff',8.2,.68,4.6);B.cyl(.3,.03,'#ffffff',9.6,.68,5.6);B.ball(.13,.13,.13,'#ff8f5a',8.2,.8,4.6);B.cyl(.12,.14,'#3fc1a5',9,.72,5);
-    B.box(.9,1.1,.9,'#eaf6ff',11.5,.55,16.5);B.torus(.3,.06,'#b9c4cf',11.02,.55,15.5,0,Math.PI/2);
-    B.sign('洗衣機',11.5,1.5,14.06,0,1.2,.36,'#3fa9e0','#fff');
-    for(let i=0;i<10;i++){const a=i/10*6.283;B.cloud(9+Math.cos(a)*28,6+i%4*1.5,8+Math.sin(a)*24,3+i%3);}
+    B.bunting(4.5,1.15,16.5,1.15,2.85);
+    /* ---- 天花板木樑＋沿牆頂的藤蔓 ---- */
+    [3.5,7.5,11.5].forEach(function(z){B.beam(.6,z,17.4,z,3.15);});
+    B.vine(4,1.1,17,1.1,3.05,3);B.vine(1.1,3,1.1,12.5,3.05,5);B.vine(1,9.5,6,9.5,3.25,9);B.vine(16.9,2,16.9,12,3.05,13);
+    /* ---- A 出生紙箱區：小布毯、魚骨塗鴉、暖色壁燈 ---- */
+    B.cloth(2.5,11.5,1.6,1.3,'fishrug','#ffffff',.08);
+    B.box(.06,.06,.32,'#3b2a22',2.0,1.95,10.16);B.lantern(2.0,1.72,10.32,'#F3BC68');
+    [[3.6,1.25],[4.4,1.45]].forEach(function(q){const f=H.fishMesh(null,MB('#F1DFC0',.75),.9);f.position.set(q[0],q[1],10.012);});
+    /* ---- 東門上方的警示燈：偷罐後才亮、閃動 ---- */
+    const al=B.glowBall(16.78,2.15,7.5,.12,'#E77863');
+    PH.GFX.anim.push(function(t){const on=!!PH.L&&PH.L.theft;al.visible=on;if(on)al.scale.setScalar(1+(PH.opt.flash?0:Math.abs(Math.sin(t*4))*.4));});
+    /* ---- 練習區：洗衣機門口 ---- */
+    B.rbox(.9,1.1,.9,.12,MT(CREAM,'plaster'),11.5,.55,16.5);B.torus(.3,.06,'#9fb7b2',11.02,.55,15.5,0,Math.PI/2);
+    B.sign('洗衣機',11.5,1.5,14.06,0,1.2,.36,TEAL,CREAM);
+    B.stars(9,9,60);
+    B.motes(9,5.5,4.5,3.5,2,24,'#F3BC68','dust',.7);   // 吊燈下飄的灰塵
   },
   checks:[
     {name:'普通貓走得到冰箱前',form:'normal',from:[2.5,11.5],to:[2.5,2.45],expect:true},
@@ -185,14 +246,15 @@ PH.defLevel({
   id:'laundry',title:'第二關',name:'洗衣機裡的海底宇宙',size:[22,21],next:'museum',
   reward:'liquid',canName:'流心鮭魚罐',trouble:'scent',coreR:3.4,cpTheft:[6.6,5.5],ambient:{period:11,on:6},
   lockMsg:'秩序局廣播：金庫失竊！脫水程序啟動，拖把犬出動。',fallMsg:'噗通！被水流沖回最近的浮台。',
-  pal:{sky:'#0f3554',sky2:'#3aa0b8',fog:'#1c5a78',fogNear:16,fogFar:52,wall:'#5fb3c9',trim:'#e8f7ff',floor:['#f3ead2','#e4d7b8','#cfe9f2','#bfdfe9','#7fd0e6'],block:'#e98fb0',top:'#fff1f6',liquid:'#1f7ea8',liquidY:-0.32},
-  mood:{hemi:['#bfefff','#3a7a9a',0.75],sun:['#dff6ff',0.5,[6,16,4]]},
+  // 美術：靛藍水色、奶白泡泡、柔紫襪子礁、暖色安全燈
+  pal:{sky:'#0d1636',sky2:'#2c4c86',fog:'#182a52',fogNear:15,fogFar:48,wall:'#3d5a96',trim:'#F1DFC0',cap:'#F1DFC0',floor:['#e9dcc0','#ddd0b4','#b4c9de','#a6bdd6','#5a86c4'],block:'#b49ad6',top:'#F1DFC0',blockTex:'plaster',liquid:'#2c5aa0',liquidY:-0.32},
+  mood:{hemi:['#c9d8ff','#2a3c74',0.62],sun:['#dfe8ff',0.36,[6,16,4]],amb:'#1d2c58',ambI:0.45},
   ops:[['~',1,1,20,15],['H',5,1,10,4],['.',6,2,9,3],['f',7,4,7,4],['.',6,5,9,6],['.',4,6,5,6],['.',1,6,3,11],
     ['H',15,1,20,4],[',',16,2,19,3],[',',17,4,17,4],['.',15,5,19,6],
     ['.',10,8,13,10],['Q',12,8,13,8],['.',10,11,10,11],['.',5,12,11,14],['w',12,12,13,14],['.',14,12,19,14],['.',18,8,19,11],['w',18,11,19,11],
     [',',6,15,6,15],[',',5,16,15,19],['H',10,16,10,19]],
-  legend:{H:{k:'solid',h:2.4,m:'block',col:'#dfe9ef',top:'#b9c9d4'},f:{k:'gap',h:2.4,lo:0.3,m:'gapblock',col:'#9fb4c2'},
-    Q:{k:'solid',h:1.1,m:'block',col:'#e0b070',top:'#f1cf8e'}},
+  legend:{H:{k:'solid',h:2.4,m:'block',col:'#d9dfec',top:'#b4bfd6',tex:'tin'},f:{k:'gap',h:2.4,lo:0.3,m:'gapblock',col:'#8f9fc2'},
+    Q:{k:'solid',h:1.1,m:'block',col:'#c99a62',top:'#F1DFC0',tex:'wood'}},
   start:{x:6.5,y:13.5,box:'home'},
   ents:[
     {t:'box',id:'home',x:6.5,y:13.5,safe:1,finish:1},
@@ -258,14 +320,16 @@ PH.defLevel({
   build:function(B,L){
     B.cyl(1.9,.4,'#b9c9d4',8,2.6,2.5,0,0,Math.PI/2);B.torus(1.5,.18,'#8fa3b0',8,1.4,4.06);
     B.sign('滾筒金庫',8,2.9,4.08,0,1.8,.4,'#16425b','#dff6ff');B.sign('脫水控制室',17.5,2.9,4.08,0,2,.4,'#16425b','#ffd23f');
-    [[2,7,'#ff8fa3'],[3,8.5,'#ffd23f'],[1.6,9.6,'#8fc3b4'],[4.4,11,'#c9a0ff']].forEach(function(q){B.ball(.5,.22,.32,q[2],q[0],.2,q[1]);});
+    [[2,7,'#c9a8e6'],[3,8.5,'#E77863'],[1.6,9.6,'#a58fd0'],[4.4,11,'#d8b8f0']].forEach(function(q){B.ball(.5,.22,.32,q[2],q[0],.2,q[1]);});
     B.box(1.9,.5,.9,'#f1cf8e',13,1.35,8.5).castShadow=false;
     for(let i=0;i<16;i++){const x=1.5+(i*7.3)%19,z=1.5+(i*4.9)%13;B.bubble(x,1.2+i%4*.7,z,.18+i%3*.1);}
-    B.lantern(6.5,1.6,12.2,'#ffcf7a');B.lantern(15.2,1.6,12.2,'#ffcf7a');
+    B.lantern(6.5,1.6,12.2,'#F3BC68');B.lantern(15.2,1.6,12.2,'#F3BC68');
     B.bunting(5,12.05,19,12.05,2.1);
-    B.shaft(11,9,2.4,5,'#bfefff');B.shaft(4,13,2,5,'#bfefff');
+    B.shaft(11,9,2.4,5,'#bcd2ff');B.shaft(4,13,2,5,'#bcd2ff');
+    B.motes(11,10,20,18,3.2,60,'#eef2ff','rise');   // 奶白泡泡往上飄
+    B.motes(11,10,18,16,2.4,30,'#c9a8e6','dust');
     B.cyl(.7,.9,'#fff6e3',10.5,.45,17.5);B.cone(.25,.7,'#fff6e3',11.3,.6,17.5,0,0,-1.2);B.torus(.3,.07,'#fff6e3',9.6,.5,17.5,Math.PI/2,0);
-    B.rock(1.2,13.6,1.2,'#2f6f8f');B.rock(20.3,7,1.5,'#2f6f8f');B.rock(12,1.6,1.3,'#2f6f8f');
+    B.rock(1.2,13.6,1.2,'#8f7ab8');B.rock(20.3,7,1.5,'#8f7ab8');B.rock(12,1.6,1.3,'#7a68a8');   // 柔紫襪子礁
   },
   checks:[
     {name:'安全碼頭走得到滑軌',form:'normal',from:[6.5,13.5],to:[16.5,12.5],expect:true},

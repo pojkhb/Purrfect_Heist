@@ -2,9 +2,9 @@
 (function(){
 'use strict';
 const PH=window.PH,U=PH.U,W=PH.World,G=PH.GFX,H=G.h,T3=H.T3;
-const M=H.M,MB=H.MB,add=H.add,bx=H.bx,bl=H.bl,cy=H.cy,cn=H.cn,gp=H.gp,flat=H.flat,GEO=H.GEO;
+const M=H.M,MB=H.MB,MT=H.MT,add=H.add,bx=H.bx,bl=H.bl,cy=H.cy,cn=H.cn,gp=H.gp,flat=H.flat,rb=H.rb,GEO=H.GEO;
 const EB={},ES={};
-const CANCOL={prologue:'#8fc3b4',kitchen:'#3fa9e0',laundry:'#ff8f6a',museum:'#5a4a9a',market:'#ffd23f',moon:'#fff2c4',escape:'#fff2c4'};
+const CANCOL={prologue:'#8fc3b4',kitchen:'#F6CD79',laundry:'#ff8f6a',museum:'#5a4a9a',market:'#ffd23f',moon:'#fff2c4',escape:'#fff2c4'};
 function basic(c,op,addv){return new T3.MeshBasicMaterial({color:c,transparent:true,opacity:op==null?1:op,depthWrite:false,side:T3.DoubleSide,blending:addv?T3.AdditiveBlending:T3.NormalBlending});}
 function tor(R,r,c,x,y,z,p){return add(new T3.TorusGeometry(R,r,6,12),c,1,1,1,x,y,z,p);}
 
@@ -24,19 +24,124 @@ function fishboneMesh(p,mat,s){
 }
 
 /* ---------- 咪嚕 ---------- */
+/* 咪嚕：奶油橘白小貓，像精緻的手作公仔。
+   身體是一整條車床曲線（臀部→腰→胸→往上彎的脖子），頭是壓扁臉的球，毛色與斑紋畫在頂點色上；
+   尾巴是每幀重算的連續彎管；外面一圈深色描邊（反向外殼），童話繪本感、也讓輪廓從背後一眼認得。 */
+const CATC={OR:'#D99556',CR:'#F6E7CF',DK:'#b9733f',PK:'#e7a29a',EY:'#2b1b2e',LINE:'#2b1b2e'};
+let CATG=null;
+function sstep(a,b,v){const t=U.clamp((v-a)/(b-a),0,1);return t*t*(3-2*t);}
+function paintGeo(geo,fn){
+  const p=geo.attributes.position,col=new Float32Array(p.count*3),c=new T3.Color();
+  for(let i=0;i<p.count;i++){fn(p.getX(i),p.getY(i),p.getZ(i),c);col[i*3]=c.r;col[i*3+1]=c.g;col[i*3+2]=c.b;}
+  geo.setAttribute('color',new T3.BufferAttribute(col,3));return geo;
+}
+// 描邊用的外殼：每個頂點沿法線往外推 w
+function hullGeo(geo,w){
+  const g=geo.clone(),p=g.attributes.position,n=g.attributes.normal;
+  for(let i=0;i<p.count;i++)p.setXYZ(i,p.getX(i)+n.getX(i)*w,p.getY(i)+n.getY(i)*w,p.getZ(i)+n.getZ(i)*w);
+  if(g.attributes.color)g.deleteAttribute('color');
+  return g;
+}
+function catGeo(){
+  if(CATG)return CATG;
+  const OR=new T3.Color(CATC.OR),CR=new T3.Color(CATC.CR),DK=new T3.Color(CATC.DK),W=.012;
+  // 身體：沿長度方向的半徑剖面（尾端→臀→腰→胸→脖子）
+  const prof=[[.001,-.31],[.08,-.3],[.14,-.27],[.172,-.21],[.18,-.14],[.168,-.06],[.152,.01],[.158,.08],[.165,.14],[.15,.21],[.118,.27],[.092,.31],[.06,.345],[.001,.36]].map(function(q){return new T3.Vector2(q[0],q[1]);});
+  const body=new T3.LatheGeometry(prof,22,Math.PI/2);   // 接縫轉到肚子下面
+  body.rotateZ(-Math.PI/2);body.scale(1,1,.9);
+  const bp=body.attributes.position,pre=new Float32Array(bp.count);
+  for(let i=0;i<bp.count;i++){const x=bp.getX(i),y=bp.getY(i);pre[i]=y;bp.setY(i,y+.24+(x>.06?(x-.06)*(x-.06)*1.6:0));}   // 前段往上彎成脖子
+  body.computeVertexNormals();
+  let k=0;
+  paintGeo(body,function(x,y,z,c){
+    const yy=pre[k++];c.copy(OR);
+    c.lerp(CR,Math.max(sstep(-.04,-.11,yy),sstep(.12,.22,x)*sstep(.06,-.04,yy)));            // 肚子、胸口奶油色
+    if(yy>.07)[-.17,-.07,.03].forEach(function(cx){c.lerp(DK,(1-sstep(.012,.026,Math.abs(x-cx)))*.85);});   // 背上三道斑紋
+  });
+  // 頭：臉稍微壓平，吻部與下巴奶油色、額頭三道細紋
+  const head=new T3.SphereGeometry(1,28,20);head.scale(.2,.18,.205);
+  const hp=head.attributes.position;for(let i=0;i<hp.count;i++){const x=hp.getX(i);if(x>.1)hp.setX(i,.1+(x-.1)*.8);}
+  head.computeVertexNormals();
+  paintGeo(head,function(x,y,z,c){
+    c.copy(OR);c.lerp(CR,Math.max(sstep(.08,.15,x)*sstep(.0,-.05,y),sstep(-.1,-.15,y)));
+    if(y>.11&&x>-.06&&x<.1){const az=Math.abs(z);c.lerp(DK,(az<.016||(az>.045&&az<.064))?.85:0);}
+  });
+  // 腿：粗短，腳掌奶油色
+  const leg=new T3.LatheGeometry([[.001,-.155],[.04,-.152],[.058,-.138],[.06,-.118],[.05,-.095],[.046,-.05],[.05,0],[.052,.03],[.001,.05]].map(function(q){return new T3.Vector2(q[0],q[1]);}),14);
+  leg.computeVertexNormals();
+  paintGeo(leg,function(x,y,z,c){c.copy(OR).lerp(CR,sstep(-.09,-.115,y));});
+  const ear=new T3.ConeGeometry(1,1,12);ear.scale(.035,.15,.075);ear.translate(0,.075,0);
+  const earIn=new T3.ConeGeometry(1,1,10);earIn.scale(.012,.1,.05);earIn.translate(.022,.06,0);
+  const wh=new T3.CylinderGeometry(.004,.0015,1,4);wh.rotateX(Math.PI/2);wh.translate(0,0,.5);   // 鬍鬚：沿 +z 長出去
+  CATG={body:body,bodyH:hullGeo(body,W),head:head,headH:hullGeo(head,W),leg:leg,legH:hullGeo(leg,W),ear:ear,earH:hullGeo(ear,W*.8),earIn:earIn,wh:wh,ball:new T3.SphereGeometry(1,16,12)};
+  return CATG;
+}
+// 連續彎管（尾巴）：S 段、每圈 R 個頂點，形狀每幀用 setTube 更新
+function tubeGeo(S,R,colored){
+  const n=(S+1)*(R+1),g=new T3.BufferGeometry(),idx=[];
+  g.setAttribute('position',new T3.BufferAttribute(new Float32Array(n*3),3));
+  g.setAttribute('normal',new T3.BufferAttribute(new Float32Array(n*3),3));
+  for(let i=0;i<S;i++)for(let j=0;j<R;j++){const a=i*(R+1)+j,b=a+R+1,c=b+1,d=a+1;idx.push(a,d,b,b,d,c);}
+  g.setIndex(idx);
+  if(colored){
+    const col=new Float32Array(n*3),OR=new T3.Color(CATC.OR),CR=new T3.Color(CATC.CR),c=new T3.Color();
+    for(let i=0;i<=S;i++){c.copy(OR).lerp(CR,sstep(.72,.82,i/S));for(let j=0;j<=R;j++){const q=(i*(R+1)+j)*3;col[q]=c.r;col[q+1]=c.g;col[q+2]=c.b;}}
+    g.setAttribute('color',new T3.BufferAttribute(col,3));
+  }
+  g.userData={S:S,R:R};return g;
+}
+const TV={t:new T3.Vector3(),n:new T3.Vector3(),b:new T3.Vector3(),z:new T3.Vector3(0,0,1)};
+function setTube(g,pts,rad){
+  const S=g.userData.S,R=g.userData.R,pa=g.attributes.position.array,na=g.attributes.normal.array,T=TV.t,N=TV.n,Bv=TV.b;
+  for(let i=0;i<=S;i++){
+    const p0=pts[Math.max(0,i-1)],p1=pts[Math.min(S,i+1)],p=pts[i];
+    T.set(p1[0]-p0[0],p1[1]-p0[1],p1[2]-p0[2]).normalize();
+    N.crossVectors(TV.z,T);if(N.lengthSq()<1e-6)N.set(0,1,0);N.normalize();Bv.crossVectors(T,N).normalize();
+    for(let j=0;j<=R;j++){
+      const th=j/R*6.2832,cs=Math.cos(th),sn=Math.sin(th),q=(i*(R+1)+j)*3;
+      const dx=cs*N.x+sn*Bv.x,dy=cs*N.y+sn*Bv.y,dz=cs*N.z+sn*Bv.z;
+      pa[q]=p[0]+dx*rad[i];pa[q+1]=p[1]+dy*rad[i];pa[q+2]=p[2]+dz*rad[i];na[q]=dx;na[q+1]=dy;na[q+2]=dz;
+    }
+  }
+  g.attributes.position.needsUpdate=true;g.attributes.normal.needsUpdate=true;
+}
 function makeCat(L){
-  const o={},g=o.g=gp(),n=o.norm=gp(0,0,0,g),b=o.body=gp(0,0,0,n),OR='#f6a23c',CR='#fff1dc',DK='#d97f2a';
-  bl(.27,.2,.2,OR,0,.26,0,b);bl(.14,.13,.16,CR,.13,.2,0,b);
-  bx(.04,.02,.26,DK,-.02,.455,0,b);bx(.04,.02,.22,DK,-.12,.44,0,b);
-  const h=o.head=gp(.24,.44,0,b);
-  bl(.17,.155,.18,OR,0,0,0,h);bl(.075,.055,.1,CR,.12,-.05,0,h);bl(.022,.018,.026,'#e2748a',.195,-.03,0,h);
-  [-1,1].forEach(function(s){bl(.026,.034,.022,'#2b1b2e',.135,.035,s*.075,h);cn(.065,.13,OR,-.02,.16,s*.1,h);cn(.035,.08,'#f7b8b0',.005,.15,s*.1,h);});
+  const CG=catGeo(),o={},g=o.g=gp(),n=o.norm=gp(0,0,0,g),b=o.body=gp(0,0,0,n);
+  const skin=new T3.MeshStandardMaterial({vertexColors:true,roughness:.88}),line=new T3.MeshBasicMaterial({color:CATC.LINE,side:T3.BackSide});
+  const part=function(geo,hull,mat,p,x,y,z){const m=new T3.Mesh(geo,mat);m.position.set(x||0,y||0,z||0);m.castShadow=true;m.receiveShadow=true;p.add(m);
+    if(hull){const h=new T3.Mesh(hull,line);m.add(h);}return m;};
+  part(CG.body,CG.bodyH,skin,b);
+  [-1,0,1].forEach(function(s){const m=cn(.03,.08,CATC.CR,.3,.27-.03*Math.abs(s),s*.045,b);m.rotation.z=-2.3;m.castShadow=false;});   // 胸前毛束
+  const h=o.head=gp(.3,.43,0,b);
+  part(CG.head,CG.headH,skin,h);
+  // 臉：大眼睛＋兩個高光、吻部兩團、下巴、粉紅鼻子、鬍鬚、腮紅
+  const eyeM=new T3.MeshStandardMaterial({color:CATC.EY,roughness:.25}),hiM=new T3.MeshBasicMaterial({color:'#ffffff'}),crM=M(CATC.CR),pkM=M(CATC.PK);
+  [-1,1].forEach(function(s){
+    const e=new T3.Mesh(CG.ball,eyeM);e.scale.set(.026,.054,.042);e.position.set(.158,.028,s*.085);e.rotation.y=-s*.5;h.add(e);
+    const h1=new T3.Mesh(CG.ball,hiM);h1.scale.setScalar(.011);h1.position.set(.18,.052,s*.075);h.add(h1);
+    const h2=new T3.Mesh(CG.ball,hiM);h2.scale.setScalar(.005);h2.position.set(.18,.008,s*.096);h.add(h2);
+    const mz=new T3.Mesh(CG.ball,crM);mz.scale.set(.045,.038,.042);mz.position.set(.162,-.058,s*.03);h.add(mz);
+    const bl_=new T3.Mesh(CG.ball,MB(CATC.PK,.55));bl_.scale.set(.012,.022,.03);bl_.position.set(.13,-.045,s*.13);h.add(bl_);
+    for(let k=-1;k<=1;k++){const w=new T3.Mesh(CG.wh,crM);w.scale.z=.15+(k===0?.02:0);w.position.set(.17,-.055+k*.012,s*.055);w.rotation.set(-s*k*.18,s>0?.3:Math.PI-.3,0);h.add(w);}
+    const ep=gp(-.03,.13,s*.105,h);ep.rotation.x=s*.28;
+    part(CG.ear,CG.earH,M(CATC.OR),ep);const ei=new T3.Mesh(CG.earIn,pkM);ep.add(ei);
+    (o.ears=o.ears||[]).push(ep);
+  });
+  const ch=new T3.Mesh(CG.ball,crM);ch.scale.set(.034,.028,.038);ch.position.set(.14,-.095,0);h.add(ch);
+  const ns=new T3.Mesh(CG.ball,pkM);ns.scale.set(.02,.015,.026);ns.position.set(.198,-.03,0);h.add(ns);
+  // 腿：前腳掛在身體上（坐下時跟著撐直），後腳掛在根節點（坐下時往前折）
   o.legs=[];
-  [[.15,.1],[.15,-.1],[-.15,.1],[-.15,-.1]].forEach(function(q){const l=gp(q[0],.18,q[1],n);cy(.05,.18,OR,0,-.09,0,l);bl(.058,.035,.065,CR,.01,-.165,0,l);o.legs.push(l);});
-  const t=o.tail=gp(-.25,.3,0,b);
-  cy(.036,.2,OR,-.04,.08,0,t).rotation.z=.5;cy(.034,.18,OR,-.1,.24,0,t).rotation.z=.15;bl(.045,.05,.045,CR,-.11,.35,0,t);
+  [[.15,.1,b],[.15,-.1,b],[-.16,.1,n],[-.16,-.1,n]].forEach(function(q,i){const l=gp(q[0],.15,q[1],q[2]);const m=part(CG.leg,CG.legH,skin,l);if(i>1)m.scale.set(1.18,1,1.18);o.legs.push(l);});
+  // 尾巴：連續彎管＋同形狀但粗一圈的描邊管
+  o.tail=gp(-.28,.27,0,b);
+  o.tailG=tubeGeo(16,8,true);o.tailH=tubeGeo(16,8,false);
+  const tm=new T3.Mesh(o.tailG,skin);tm.castShadow=true;tm.frustumCulled=false;o.tail.add(tm);
+  const th=new T3.Mesh(o.tailH,line);th.frustumCulled=false;o.tail.add(th);
+  o.tp=[];o.tr=[];o.trh=[];for(let i=0;i<=16;i++){o.tp.push([0,0,0]);o.tr.push(0);o.trh.push(0);}
+  o.ta=.3;o.tc=.8;o.puff=1;o.still=0;o.sit=0;o.crouch=0;
+  setCatTail(o,0,1);
   // 液體貓：一攤果凍，尾巴掛在邊上
-  const q=o.liq=gp(0,0,0,g),lm=new T3.MeshStandardMaterial({color:'#f9b860',transparent:true,opacity:.82,roughness:.15,flatShading:true});
+  const q=o.liq=gp(0,0,0,g),lm=new T3.MeshStandardMaterial({color:'#e8a868',transparent:true,opacity:.84,roughness:.35});
   o.puddle=add(GEO.ico2,lm,.4,.08,.34,0,.07,0,q);add(GEO.ico2,lm,.17,.11,.17,.16,.13,0,q);
   [-1,1].forEach(function(s){add(GEO.cone,lm,.05,.09,.05,.13,.25,s*.09,q);bl(.022,.026,.02,'#2b1b2e',.29,.15,s*.06,q);});
   add(GEO.cyl,lm,.03,.2,.03,-.36,.1,.1,q).rotation.z=.9;
@@ -49,29 +154,50 @@ function makeCat(L){
   return o;
 }
 
+// 依 o.ta（根部角度）、o.tc（捲曲）、o.puff（炸毛）、o.sit（坐下時繞到側邊）重算尾巴形狀
+function setCatTail(o,t,sway){
+  const S=16,seg=.42/S;let x=0,y=0;
+  for(let i=0;i<=S;i++){
+    const k=i/S;
+    o.tp[i][0]=x;o.tp[i][1]=y;o.tp[i][2]=sway*Math.pow(k,1.5)*Math.sin(t*2.2-i*.3)*.08+o.sit*.2*k*k;
+    const phi=o.ta+o.tc*k*k*2.2;x-=Math.cos(phi)*seg;y+=Math.sin(phi)*seg;
+    const r=(.042-.014*k)*o.puff;o.tr[i]=i===S?.004:i===S-1?r*.7:r;o.trh[i]=o.tr[i]+.012;
+  }
+  setTube(o.tailG,o.tp,o.tr);setTube(o.tailH,o.tp,o.trh);
+}
+
 /* ---------- 狗 ---------- */
-const DOGCOL={shiba:'#e89b3f',nose:'#b9773c',ear:'#9aa3b8',poodle:'#fff6ee',captain:'#6f7a94',corgi:'#f2b25e',bulldog:'#8a8f9a',sleepwalk:'#bfd6ff',mop:'#d9c8a0'};
+// 狗：方正的圓角方塊輪廓（對比貓的軟圓），表情認真但有點好笑
+const DOGCOL={shiba:'#d98a4a',nose:'#a8703f',ear:'#8f98ab',poodle:'#f6eee2',captain:'#66708a',corgi:'#e0a35c',bulldog:'#858a94',sleepwalk:'#b9cdee',mop:'#d3c29a'};
 function makeDog(kind){
-  const cg=kind==='corgi',hv=kind==='bulldog'||kind==='captain',o={},g=o.g=gp(),b=o.body=gp(0,0,0,g),TN=DOGCOL[kind],CR='#fff1dc',BK='#2b1b2e';
+  const cg=kind==='corgi',hv=kind==='bulldog'||kind==='captain',o={},g=o.g=gp(),b=o.body=gp(0,0,0,g),TN=DOGCOL[kind],CR='#F6E7CF',BK='#2b1b2e';
   const wd=hv?1.25:1;
-  bl(cg?.4:.36,.26,.25*wd,TN,0,.44,0,b);bl(.2,.2,.21*wd,CR,.2,.36,0,b);
+  rb(cg?.84:.76,.46,.5*wd,.12,TN,0,.44,0,b);rb(.34,.36,.4*wd,.1,CR,.24,.38,0,b);
   const h=o.head=gp(.38,.76,0,b);
-  bl(.22,.2,.22*wd,TN,0,0,0,h);bl(.13,.09,.13,CR,.17,-.07,0,h);
-  bl(kind==='nose'?.075:.04,kind==='nose'?.06:.032,kind==='nose'?.08:.045,kind==='nose'?'#e2748a':BK,.295,-.04,0,h);
+  rb(.42,.38,.42*wd,.1,TN,0,0,0,h);rb(.24,.15,.24,.05,CR,.2,-.08,0,h);
+  rb(kind==='nose'?.14:.08,kind==='nose'?.1:.06,kind==='nose'?.15:.09,.025,kind==='nose'?'#e2748a':BK,.32,-.04,0,h);
   [-1,1].forEach(function(s){
-    if(kind==='sleepwalk')bx(.02,.012,.06,BK,.19,.05,s*.095,h);else bl(.03,.036,.025,BK,.175,.05,s*.095,h);
+    if(kind==='sleepwalk')bx(.02,.012,.06,BK,.21,.05,s*.095,h);else bl(.03,.036,.025,BK,.21,.05,s*.095,h);
+    const brow=bx(.02,.025,.08,BK,.21,.1,s*.1,h);brow.rotation.x=s*.35;brow.castShadow=false;   // 認真的眉毛
     bl(.09,.08,.07,CR,.08,-.07,s*.15,h);
     if(kind==='ear')cn(.14,.46,TN,-.04,.34,s*.2,h);
     else if(kind==='poodle')bl(.12,.14,.1,'#ffffff',-.02,.1,s*.22,h);
     else if(kind==='bulldog')bl(.07,.05,.06,TN,-.02,.14,s*.19,h);
     else cn(cg?.1:.07,cg?.24:.15,TN,-.04,cg?.24:.19,s*.17,h);
   });
-  if(cg){bl(.05,.12,.05,CR,.16,.08,0,h);tor(.17,.035,'#ef5d50',.3,.6,0,b).rotation.y=Math.PI/2;bl(.04,.04,.04,'#ffd23f',.42,.5,0,b);}
-  else if(kind==='shiba'){cy(.135,.09,'#2f5fd0',-.01,.215,0,h);bx(.15,.025,.26,'#234aa8',.13,.18,0,h);bl(.04,.04,.02,'#ffd23f',.13,.225,0,h);}
+  if(cg){bl(.05,.12,.05,CR,.16,.08,0,h);tor(.17,.035,'#E77863',.3,.6,0,b).rotation.y=Math.PI/2;bl(.04,.04,.04,'#F3BC68',.42,.5,0,b);}
+  else if(kind==='shiba'){
+    // 毛線巡邏帽＋魚骨徽章（原創設計，不用任何既有制服配色）；手提燈只自發光，不加點光源
+    cy(.15,.11,'#315C53',-.01,.24,0,h);cy(.155,.04,'#F1DFC0',-.01,.19,0,h);bl(.05,.05,.05,'#F1DFC0',-.01,.31,0,h);
+    const f=H.fishMesh(h,M('#F3BC68'),.22);f.position.set(.165,.24,0);f.rotation.y=Math.PI/2;
+    o.lamp=gp(.14,.34,.33*wd,b);cy(.012,.16,BK,0,.08,0,o.lamp);
+    rb(.17,.04,.17,.015,'#5a3d24',0,.01,0,o.lamp);rb(.17,.04,.17,.015,'#5a3d24',0,-.14,0,o.lamp);
+    add(GEO.box,M('#F3BC68',{emissive:'#F3BC68',emissiveIntensity:.9}),.12,.12,.12,0,-.065,0,o.lamp).castShadow=false;
+  }
   else if(kind==='nose'){cn(.2,.16,'#7a4a2b',-.01,.24,0,h);bx(.2,.03,.3,'#5a3d24',.1,.17,0,h);}
   else if(kind==='poodle'){bl(.13,.12,.13,'#ffffff',-.02,.22,0,h);add(GEO.box,M('#ffd23f',{emissive:'#ffd23f',emissiveIntensity:1}),.1,.08,.14,.2,.2,0,h).castShadow=false;
     o.beam=new T3.Mesh(new T3.CylinderGeometry(.08,1.4,3.6,10,1,true),MB('#fff2c4',.13,true));o.beam.rotation.z=Math.PI/2+.25;o.beam.position.set(2.0,-.25,0);h.add(o.beam);}
-  else if(kind==='captain'){cy(.2,.1,'#1f2a5a',-.01,.22,0,h);bx(.2,.03,.36,'#1f2a5a',.14,.18,0,h);bl(.05,.05,.02,'#ffd23f',.17,.25,0,h);}
+  else if(kind==='captain'){cy(.2,.1,'#4a3a5c',-.01,.22,0,h);cy(.205,.035,'#F1DFC0',-.01,.18,0,h);bx(.2,.03,.36,'#4a3a5c',.14,.17,0,h);const f=H.fishMesh(h,M('#F3BC68'),.24);f.position.set(.2,.24,0);f.rotation.y=Math.PI/2;}
   else if(kind==='bulldog'){bx(.5,.12,.56,'#4a4f5a',0,.66,0,b);bx(.3,.1,.5,'#4a4f5a',-.2,.62,0,b);tor(.2,.045,'#2b1b2e',.3,.62,0,b).rotation.y=Math.PI/2;
     for(let i=0;i<5;i++)cn(.03,.08,'#dfe6ec',.3,.62+Math.cos(i*1.25)*.22,Math.sin(i*1.25)*.22,b);bl(.06,.03,.2,CR,.24,-.14,0,h);}
   else if(kind==='sleepwalk'){const c=cn(.15,.34,'#7fa0e6',-.03,.26,0,h);c.rotation.z=.5;bl(.05,.05,.05,'#ffffff',-.19,.38,0,h);}
@@ -79,12 +205,14 @@ function makeDog(kind){
   o.legs=[];
   [[.22,.13*wd],[.22,-.13*wd],[-.22,.13*wd],[-.22,-.13*wd]].forEach(function(q){
     const l=gp(q[0],cg?.14:.26,q[1],g);if(cg)l.scale.y=.54;
-    cy(.065,.26,TN,0,-.13,0,l);bl(.075,.04,.085,CR,.015,-.24,0,l);o.legs.push(l);
+    rb(.13,.26,.13,.04,TN,0,-.13,0,l);rb(.16,.06,.16,.025,CR,.015,-.24,0,l);o.legs.push(l);
   });
   o.tail=cg?bl(.07,.07,.07,CR,-.4,.5,0,b):kind==='poodle'?bl(.1,.1,.1,'#ffffff',-.42,.66,0,b):add(new T3.TorusGeometry(.1,.045,5,8,5),TN,1,1,1,-.36,.66,0,b);
   o.lid=gp(0,0,0,g);cy(.64,.07,'#b9c4cf',0,0,0,o.lid);cy(.5,.05,'#d5dde4',0,.05,0,o.lid);
   o.towel=bx(.5,.1,.5,'#ff5fa2',.38,1.0,0,b);
-  o.tape=tor(.09,.04,'#ffd23f',.62,.66,0,b);o.tape.rotation.y=Math.PI/2;
+  // 封縫用的巨大膠帶捲（童話式誇張比例）
+  o.tape=gp(.6,.7,0,b);tor(.2,.085,'#F3BC68',0,0,0,o.tape).rotation.y=Math.PI/2;tor(.11,.03,'#c9a24a',0,0,0,o.tape).rotation.y=Math.PI/2;
+  bx(.04,.3,.2,'#F3BC68',.02,-.28,.06,o.tape).castShadow=false;
   if(hv||kind==='captain')g.scale.set(1.2,1.2,1.2);
   return o;
 }
@@ -160,30 +288,62 @@ function syncTele(T,L,t){
 
 /* ---------- 物件：建立 ---------- */
 EB.box=function(e){
-  const g=e.g=gp(e.x,0,e.y),CB='#d9a066',CD='#b98250';
+  // 皺皺的紙箱：紙纖維貼圖、幾道折痕、蓋子不完全對齊
+  const g=e.g=gp(e.x,0,e.y),CB=MT('#d29a62','plaster'),CD=MT('#b98250','plaster');
   bx(.86,.5,.05,CB,0,.25,.405,g);bx(.86,.5,.05,CB,0,.25,-.405,g);bx(.05,.5,.8,CB,.405,.25,0,g);bx(.05,.5,.8,CB,-.405,.25,0,g);bx(.8,.04,.8,'#5a3d24',0,.03,0,g);
-  e.lids=[1,-1].map(function(s){const l=gp(0,.5,s*.4,g);bx(.86,.03,.4,CD,0,0,-s*.2,l);l.userData.s=s;return l;});
+  [[.2,.43,.6],[-.25,.433,-.5],[.05,-.433,.4]].forEach(function(q){const c=bx(.02,.36,.01,'#9a6a40',q[0],.26,q[1],g);c.rotation.z=q[2];c.castShadow=false;});
+  bx(.6,.06,.012,'#c9a07a',0,.42,.432,g).castShadow=false;   // 膠帶殘痕
+  e.lids=[1,-1].map(function(s){const l=gp(0,.5,s*.4,g);const m=bx(.86,.03,.4,CD,0,0,-s*.2,l);m.rotation.y=s*.04;l.userData.s=s;return l;});
   if(e.safe){[.435,-.435].forEach(function(z){const f=fishboneMesh(g,M('#ffffff'),.6);f.position.set(0,.27,z);});}
   if(e.finish){e.ring=flat(GEO.ring,basic('#ffd23f',.7),0,.03,0,g);e.ring.scale.set(.85,.85,1);}
+  // 每個紙箱用自己的材質，擋在鏡頭和貓之間時可以單獨變透明
+  g.traverse(function(m){if(m.isMesh){m.material=m.material.clone();m.material.transparent=true;}});e.fade=1;
   const p=e.peek=gp(0,0,0,g);
   bl(.2,.12,.2,'#f6a23c',0,.47,0,p);
   [-1,1].forEach(function(s){cn(.065,.13,'#f6a23c',s*.1,.6,-.02,p);bl(.03,.035,.02,'#ffd23f',s*.075,.5,.185,p);});
 };
+/* 貓縫的視覺身份：像被貓爪抓開的柔軟布料裂口，不是科幻傳送門。
+   五種狀態靠「造型」區分，不只靠顏色：
+   可連接＝浮著的魚骨＋地上一圈縫線虛線；預覽＝兩點之間拉起一條針腳線；
+   啟用＝直立的深色布料裂口＋十字縫線邊＋魚骨記號；施工封鎖＝膠帶慢慢貼上＋施工三角牌；已封鎖＝整個 X 膠帶＋禁止牌。 */
+const SEAM={mint:'#86E0C2',cream:'#F1DFC0',fab:'#24183a',fab2:'#3d2c5c',tape:'#F3BC68',coral:'#E77863'};
+let TRI=null;
 EB.anchor=function(e){
   const g=e.g=gp(e.x,0,e.y);
-  e.mat=new T3.MeshBasicMaterial({color:'#fbeed6'});
-  e.glyph=fishboneMesh(g,e.mat,.9);e.glyph.position.y=.5;
-  e.gr=flat(GEO.ring,basic('#7fd0e6',.6),0,.03,0,g);e.gr.scale.set(.42,.42,1);
-  e.portal=new T3.Mesh(GEO.circ,basic('#7fd0e6',.6,true));e.portal.position.y=.55;g.add(e.portal);
-  e.pin=new T3.Mesh(GEO.circ,basic('#dff6ff',.85,true));e.pin.position.y=.55;g.add(e.pin);
-  e.tape=gp(0,.5,0,g);
-  [.6,-.6].forEach(function(r){const m=add(GEO.box,M('#ffd23f'),.8,.1,.04,0,0,0,e.tape);m.rotation.z=r;m.castShadow=false;});
+  e.mat=new T3.MeshBasicMaterial({color:SEAM.cream});
+  e.glyph=fishboneMesh(g,e.mat,.62);e.glyph.position.y=.5;
+  // 地上的縫線圈（虛線）
+  e.st=gp(0,.035,0,g);e.stM=basic(SEAM.mint,.6);
+  for(let i=0;i<12;i++){const a=i/12*6.283,m=add(GEO.box,e.stM,.13,.012,.035,Math.cos(a)*.42,0,Math.sin(a)*.42,e.st);m.rotation.y=-a+Math.PI/2;m.castShadow=false;m.receiveShadow=false;}
+  // 直立的布料裂口（面向鏡頭）
+  e.tear=gp(0,.6,0,g);e.tear.visible=false;
+  e.fab=new T3.Mesh(GEO.circ,basic(SEAM.fab,.95));e.tear.add(e.fab);
+  e.fab2=new T3.Mesh(GEO.circ,basic(SEAM.fab2,.85));e.fab2.position.z=.006;e.tear.add(e.fab2);
+  e.dots=[];for(let i=0;i<6;i++){const d=new T3.Mesh(GEO.circ,basic(i%2?SEAM.mint:'#F6CD79',.9));d.position.z=.012;e.tear.add(d);e.dots.push(d);}
+  e.sti=[];for(let i=0;i<16;i++){const m=add(GEO.box,basic(SEAM.mint,1),.085,.022,.02,0,0,.016,e.tear);m.castShadow=false;e.sti.push(m);}
+  e.fish=[];for(let i=0;i<3;i++){const f=fishboneMesh(e.tear,basic(SEAM.cream,1),.38);e.fish.push(f);}
+  e.zip=add(GEO.box,M(SEAM.tape),.07,.1,.04,0,0,.02,e.tear);e.zip.castShadow=false;
+  // 封縫：膠帶（施工中慢慢貼上）、施工三角牌、禁止牌
+  e.tape=gp(0,.55,0,g);
+  [.62,-.62].forEach(function(r){const s=gp(0,0,0,e.tape);s.rotation.z=r;add(GEO.box,M(SEAM.tape),1.0,.16,.04,0,0,0,s).castShadow=false;
+    for(let k=-2;k<=2;k++)add(GEO.box,M(SEAM.coral),.07,.165,.045,k*.2,0,0,s).castShadow=false;});
+  if(!TRI)TRI=new T3.CircleGeometry(1,3);
+  e.warn=gp(0,1.15,0,g);const tri=new T3.Mesh(TRI,basic(SEAM.tape,1));tri.rotation.z=Math.PI/2;tri.scale.setScalar(.2);e.warn.add(tri);
+  const ex=add(GEO.box,basic(SEAM.coral,1),.03,.1,.01,0,.01,.01,e.warn);ex.castShadow=false;add(GEO.box,basic(SEAM.coral,1),.03,.03,.01,0,-.07,.01,e.warn).castShadow=false;
+  e.ban=gp(0,1.15,0,g);const bd=new T3.Mesh(GEO.circ,basic(SEAM.cream,1));bd.scale.setScalar(.2);e.ban.add(bd);
+  const br=new T3.Mesh(GEO.ring,basic(SEAM.coral,1));br.scale.setScalar(.22);br.position.z=.005;e.ban.add(br);
+  const sl=add(GEO.box,basic(SEAM.coral,1),.4,.05,.01,0,0,.01,e.ban);sl.rotation.z=.75;sl.castShadow=false;
+  // 被拖把擦掉：濕答答的水滴
+  e.wet=gp(0,0,0,g);for(let i=0;i<3;i++){const d=add(GEO.ico,basic('#9fd8f0',.8),.05,.07,.05,Math.cos(i*2.1)*.3,.08,Math.sin(i*2.1)*.3,e.wet);d.castShadow=false;}
+  e.closeT=0;e.wasEnd=false;
 };
 EB.ped=function(e,L){
   const g=e.g=gp(e.x,0,e.y);let y0=W.hgt(Math.floor(e.x),Math.floor(e.y));
   if(y0<.1){cy(.3,.5,'#c9a24a',0,.25,0,g);cy(.36,.06,'#ffd23f',0,.52,0,g);y0=.55;}
   e.can=makeCan(g,CANCOL[L.id]);e.can.position.y=y0+.02;e.can.scale.setScalar(1.6);
-  e.halo=flat(GEO.circ,basic('#fff2c4',.3,true),0,y0+.03,0,g);e.halo.scale.set(.5,.5,1);
+  // 主罐是畫面焦點：暖金光暈＋一圈慢慢轉的亮點（只有主罐、有效貓縫和重要互動物會發光）
+  e.halo=flat(GEO.circ,basic('#F6CD79',.32,true),0,y0+.03,0,g);e.halo.scale.set(.55,.55,1);
+  e.spark=gp(0,y0+.45,0,g);for(let i=0;i<5;i++){const a=i*1.2566,m=add(GEO.ico,M('#F6CD79',{emissive:'#F6CD79',emissiveIntensity:1}),.025,.025,.025,Math.cos(a)*.32,Math.sin(i*2.1)*.06,Math.sin(a)*.32,e.spark);m.castShadow=false;}
   e.dome=add(GEO.ico2,new T3.MeshStandardMaterial({color:'#bfe0ff',transparent:true,opacity:.35,roughness:.1,depthWrite:false}),.36,.42,.36,0,y0+.22,0,g);e.dome.castShadow=false;
 };
 EB.sw=function(e){
@@ -281,7 +441,7 @@ EB.gate=function(e,L){
     else if(m==='panel'){slab('#f3ead2',.1);const p=horiz?bx(.6,.08,.12,'#ef5d50',0,h*.7,0,s):bx(.12,.08,.6,'#ef5d50',0,h*.7,0,s);p.castShadow=false;slab('#c9a24a',.16,.1);}
     else if(m==='shydoor'){slab('#e98fb0',.18);[-1,1].forEach(function(sg){const b=horiz?bl(.1,.07,.02,'#ef5d50',sg*.24,h*.5,.1,s):bl(.02,.07,.1,'#ef5d50',-.1,h*.5,sg*.24,s);b.castShadow=false;
       const ey=horiz?bx(.1,.025,.02,'#2b1b2e',sg*.2,h*.62,.1,s):bx(.02,.025,.1,'#2b1b2e',-.1,h*.62,sg*.2,s);ey.castShadow=false;});}
-    else if(m==='stall'){bx(.96,.7,.9,'#b98250',0,.35,0,s);bx(1.02,.1,1.0,i%2?'#ef5d50':'#fff6e3',0,h+.5,0,s);bx(1.02,.1,1.0,i%2?'#fff6e3':'#ef5d50',0,h+.62,0,s).scale.x=.6;cy(.04,h+.5,'#7a4a2b',-.44,(h+.5)/2,-.4,s);cy(.04,h+.5,'#7a4a2b',.44,(h+.5)/2,-.4,s);bl(.14,.14,.14,'#ff8f5a',-.2,.8,0,s);bl(.14,.14,.14,'#8fc3b4',.2,.8,.1,s);}
+    else if(m==='stall'){bx(.96,.7,.9,'#b98250',0,.35,0,s);bx(1.02,.1,1.0,i%2?'#3d8a7a':'#F1DFC0',0,h+.5,0,s);bx(1.02,.1,1.0,i%2?'#F1DFC0':'#3d8a7a',0,h+.62,0,s).scale.x=.6;cy(.04,h+.5,'#7a4a2b',-.44,(h+.5)/2,-.4,s);cy(.04,h+.5,'#7a4a2b',.44,(h+.5)/2,-.4,s);bl(.14,.14,.14,'#ff8f5a',-.2,.8,0,s);bl(.14,.14,.14,'#8fc3b4',.2,.8,.1,s);}
     else if(m==='socks'){bx(1,.1,.8,['#ff8fa3','#ffd23f','#8fc3b4'][i%3],0,-.03,0,s);bx(.16,.11,.82,'#ffffff',-.3,-.03,0,s);}
     else if(m==='plank'||m==='bridge'){bx(.96,.08,.96,'#b98250',0,-.03,0,s);bx(.96,.09,.1,'#7a4a2b',0,-.03,.3,s);bx(.96,.09,.1,'#7a4a2b',0,-.03,-.3,s);}
     else if(m==='spoon'){bx(1,.08,.5,'#dfe6ec',0,-.02,0,s);if(i===e.tiles.length-1)bl(.5,.1,.42,'#eef3f7',.3,0,0,s);}
@@ -306,30 +466,66 @@ EB.chute=function(e){
 };
 
 /* ---------- 物件：每幀同步 ---------- */
-ES.box=function(e,L,P){
-  const inside=P.hidden===e&&PH.S.mode!=='cut';e.peek.visible=inside;
+ES.box=function(e,L,P,t,dt){
+  // 實測：鏡頭在紙箱裡時只看得到紙箱內壁 → 躲在裡面時不畫紙箱本體（畫面上下的紙板縫由介面層負責）
+  const inside=P.hidden===e&&PH.S.mode!=='cut';e.peek.visible=false;
   const lift=inside?P.lift:0;e.lids.forEach(function(l){l.rotation.x=l.userData.s*(-.2-lift*1.1)*(inside?1:.15);});
   if(e.ring){e.ring.visible=P.hasCan;e.ring.scale.setScalar(.85+Math.sin(G.t*4)*.06);}
   e.g.rotation.y=inside?-PH.S.yaw+Math.PI/2:0;
+  // 實測：出紙箱後，紙箱剛好擋在鏡頭與貓之間、佔掉半個畫面 → 這時讓它變半透明
+  let tgt=inside?0:1;
+  if(!inside&&G.camera){
+    const cp=G.camera.position,ax=cp.x,az=cp.z,bx_=P.x,bz=P.y,dx=bx_-ax,dz=bz-az,l2=dx*dx+dz*dz||1;
+    const k=U.clamp(((e.x-ax)*dx+(e.y-az)*dz)/l2,0,1),qx=ax+dx*k,qz=az+dz*k;
+    if(k<.98&&Math.hypot(e.x-qx,e.y-qz)<.75)tgt=.22;
+  }
+  e.fade=inside?0:e.fade+(tgt-e.fade)*Math.min(1,(dt||.016)*8);
+  const op=e.fade,dw=op>.95;
+  e.g.traverse(function(m){if(m.isMesh&&m.material.transparent&&m.parent!==e.peek&&m!==e.ring){m.material.opacity=op;m.material.depthWrite=dw;m.visible=op>.02;}});
 };
-ES.anchor=function(e,L,P,t){
-  const SM=PH.Seams,s=SM.seam,isEnd=!!s&&(s.a===e||s.b===e);
+ES.anchor=function(e,L,P,t,dt){
+  const SM=PH.Seams,s=SM.seam,isEnd=!!s&&(s.a===e||s.b===e),D=SM.draw;
   e.g.position.set(e.x,0,e.y);
   e.g.visible=!!e.found&&!(e.off&&L.f[e.off]);if(!e.g.visible)return;
-  const bad=!!e.sealUntil||!!e.wipedUntil||!W.anchorOn(e);
-  e.mat.color.set(isEnd?'#7fd0e6':bad?'#77778a':'#fbeed6');
-  e.glyph.position.y=.5+Math.sin(t*2+e.x)*.04;e.glyph.rotation.y=t*.8;
-  e.gr.material.opacity=bad?.2:.45+Math.sin(t*3)*.15;e.gr.material.color.set(e.wipedUntil?'#3fa9e0':'#7fd0e6');
-  e.portal.visible=e.pin.visible=isEnd;
-  if(isEnd){
-    const k=s.state==='build'?s.t/PH.CFG.seam.build:1,pul=1+Math.sin(t*9)*.05,fade=Math.min(1,s.life/2);
-    e.portal.rotation.y=e.pin.rotation.y=-PH.S.yaw+Math.PI/2;
-    e.portal.scale.set(.36*k*pul,.62*k,1);e.pin.scale.set(.08*k,.56*k,1);e.portal.material.opacity=.3+.35*fade;
+  const sealed=!!e.sealUntil,sealing=!sealed&&e.sealing>0,wiped=!!e.wipedUntil,off=!W.anchorOn(e);
+  const preview=!!D&&(D.from===e||D.hover===e);
+  if(e.wasEnd&&!isEnd)e.closeT=.45;e.wasEnd=isEnd;   // 合起來：像布料重新縫合
+  e.closeT=Math.max(0,e.closeT-(dt||0));
+  // 魚骨：狀態不同，高度、大小、轉速都不同
+  const dim=sealed||wiped||off;
+  e.mat.color.set(isEnd||preview?SEAM.mint:dim?'#7c7c8c':SEAM.cream);
+  e.glyph.position.y=(sealed?.3:.5)+(dim?0:Math.sin(t*2+e.x)*.04)+(preview?.08:0);
+  e.glyph.rotation.y=dim?0:t*(preview?2.4:.8);e.glyph.scale.setScalar(preview?1.3:dim?.8:1);
+  // 地上縫線圈
+  e.st.visible=!sealed&&!sealing&&!wiped;
+  if(e.st.visible){e.st.rotation.y=t*(preview?2:.4);e.st.scale.setScalar(preview?1.15:1);e.stM.opacity=off?.2:preview?.95:.45+Math.sin(t*3)*.12;}
+  // 布料裂口
+  const show=isEnd||e.closeT>0;e.tear.visible=show;
+  if(show){
+    e.tear.rotation.y=-PH.S.yaw-Math.PI/2;
+    let k=1,wob=0,zip=false;
+    if(isEnd&&s.state==='build'){k=s.t/PH.CFG.seam.build;wob=(1-k)*.25;zip=true;}   // 建立時像拉開拉鍊，表面皺起
+    else if(!isEnd)k=e.closeT/.45;
+    const sx=.36*Math.sqrt(k)*(1+Math.sin(t*38)*wob),sy=.62*k,fade=isEnd?Math.min(1,s.life/2):k;
+    e.fab.scale.set(sx,sy,1);e.fab2.scale.set(sx*.68,sy*.78,1);e.fab.material.opacity=.55+.4*fade;
+    e.tear.rotation.z=Math.sin(t*30)*wob*.3;
+    e.dots.forEach(function(d,i){const a=i*2.4+t*.4,r=.5+(i%3)*.12;d.position.set(Math.cos(a)*sx*r*.6,Math.sin(a)*sy*r*.6,.012);d.scale.setScalar(.018+(i%2)*.01);});
+    const n=e.sti.length;
+    e.sti.forEach(function(m,i){const a=i/n*6.283;m.position.set(Math.cos(a)*sx*1.02,Math.sin(a)*sy*1.02,.016);m.rotation.z=a+(i%2?.7:-.7)+(isEnd?0:(1-k)*1.2);});
+    e.fish.forEach(function(f,i){const a=Math.PI/2+i*2.094;f.position.set(Math.cos(a)*(sx+.1),Math.sin(a)*(sy+.08),.02);f.rotation.z=a;f.visible=k>.6;});
+    e.zip.visible=zip;if(zip)e.zip.position.set(sx*.9,sy-2*sy*k,.02);
   }
-  e.tape.visible=e.sealing>0||!!e.sealUntil;if(e.tape.visible)e.tape.scale.setScalar(e.sealUntil?1:Math.max(.1,e.sealing));
+  // 封縫
+  e.tape.visible=sealed||sealing;
+  if(e.tape.visible){const k=sealed?1:Math.max(.08,e.sealing);e.tape.scale.set(k,1,1);e.tape.rotation.y=-PH.S.yaw-Math.PI/2;}
+  e.warn.visible=sealing;e.ban.visible=sealed;
+  if(sealing){e.warn.rotation.y=-PH.S.yaw-Math.PI/2;e.warn.position.y=1.15+Math.sin(t*6)*.03;}
+  if(sealed){e.ban.rotation.y=-PH.S.yaw-Math.PI/2;}
+  e.wet.visible=wiped&&!sealed;if(e.wet.visible)e.wet.children.forEach(function(d,i){d.position.y=.08+Math.abs(Math.sin(t*3+i))*.06;});
 };
 ES.ped=function(e,L,P,t){
   e.can.visible=!e.taken;e.halo.visible=!e.taken;e.can.rotation.y=t*.8;
+  if(e.spark){e.spark.visible=!e.taken;e.spark.rotation.y=-t*.6;}
   e.dome.visible=!e.taken&&((!!e.need&&!L.f[e.need])||(!!e.tickets&&P.tickets<e.tickets));
 };
 ES.sw=function(e,L,P,t){
@@ -397,6 +593,9 @@ G.buildWorld=function(L){
   G.decoy=gp();bl(.2,.16,.16,'#b9a08a',0,.18,0,G.decoy);bl(.12,.11,.12,'#b9a08a',.2,.3,0,G.decoy);[-1,1].forEach(function(s){cn(.05,.1,'#b9a08a',.2,.42,s*.07,G.decoy);});
   G.lure=gp();bl(.2,.05,.08,'#b9773c',0,.06,0,G.lure);
   G.aim=flat(GEO.ring,basic('#ffd23f',.9),0,.06,0);G.aimDot=flat(GEO.circ,basic('#ffd23f',.5),0,.055,0);G.aimDot.scale.set(.25,.25,1);
+  // 畫縫預覽：兩個縫點之間拉起的針腳線（合法＝薄荷青直針腳；不合法＝珊瑚紅叉叉）
+  G.thread=[];G.threadM=basic(SEAM.mint,.95);
+  for(let i=0;i<16;i++){const m=add(GEO.box,G.threadM,.16,.03,.03,0,0,0);m.castShadow=false;m.visible=false;G.thread.push(m);}
   // 特效池
   G.pool={parts:[],rings:[]};
   for(let i=0;i<70;i++){const m=new T3.Mesh(GEO.ico,new T3.MeshBasicMaterial({color:'#ffffff'}));m.visible=false;G.cur.add(m);G.pool.parts.push(m);}
@@ -423,6 +622,8 @@ function syncCat(L,P,t,dt){
   if(S.mode==='cut'&&G.cutCat)vis=true;
   c.g.visible=vis;if(!vis)return;
   c.g.position.set(P.x,(P.fz||0),P.y);c.g.rotation.y=-P.face;
+  // 實測：窄處鏡頭被牆推到貼著貓時，整個畫面變成貓的後腦 → 太近就先不畫貓
+  if(G.camera&&S.mode==='play'){const cp=G.camera.position;if(Math.hypot(cp.x-P.x,cp.y-.35*G.catS,cp.z-P.y)<.42*G.catS+.12){c.g.visible=false;return;}}
   const big=P.form==='mini'||P.form==='giant'||P.form==='normal';
   G.catS+=((big?F.scale:1)-G.catS)*Math.min(1,dt*9);
   let sq=1;if(P.warp){const w=P.warp;sq=w.t<.32?Math.max(.05,1-w.t/.32):Math.min(1,(w.t-.32)/.3);}
@@ -430,10 +631,27 @@ function syncCat(L,P,t,dt){
   c.norm.scale.set(G.catS*sq,G.catS*(2-sq),G.catS*sq);
   c.liq.scale.set(sq,1,sq);c.shd.scale.set(sq,1,sq);
   if(P.form==='liquid'){const wv=Math.sin(t*6)*.05;c.puddle.scale.set(.4+wv,.08,.34-wv);}
-  const mv=P.moving?1:0,sw=Math.sin(t*(P.form==='mini'?20:P.form==='giant'?9:14))*.6*mv;
-  c.legs[0].rotation.z=sw;c.legs[3].rotation.z=sw;c.legs[1].rotation.z=-sw;c.legs[2].rotation.z=-sw;
-  c.tail.rotation.z=Math.sin(t*3)*.2+(P.sneak?-.5:0);c.body.position.y=Math.abs(Math.sin(t*14))*.02*mv-(P.sneak?.04:0);
-  c.head.rotation.y=-P.lean*.6;c.body.rotation.x=P.lean*.25;
+  const mv=P.moving?1:0,fq=P.form==='mini'?20:P.form==='giant'?9:14,sw=Math.sin(t*fq)*.6*mv,ez=Math.min(1,dt*8);
+  const alert=PH.Dogs.any(['chase','pounce','bark']),sus=!alert&&PH.Dogs.any(['sus','inv','search','look']);
+  // 姿勢：停下來一陣子會坐下；起疑、被追或輕腳時壓低身體
+  c.still=mv||alert||P.sneak||P.holdId||P.aim?0:c.still+dt;
+  c.sit+=((c.still>1.4?1:0)-c.sit)*Math.min(1,dt*(c.still>1.4?3:10));
+  c.crouch+=((alert||sus||P.sneak?1:0)-c.crouch)*ez;
+  const th=.38*c.sit,cs=Math.cos(th),sn=Math.sin(th),px=-.2,py=.1;   // 以臀部後下方為支點往後坐
+  const bob=Math.abs(Math.sin(t*fq))*.02*mv,dip=-.05*c.crouch;
+  c.body.rotation.set(P.lean*.25,0,th+Math.sin(t*fq)*.03*mv);
+  c.body.position.set(px-(px*cs-py*sn),py-(px*sn+py*cs)+bob+dip,0);
+  c.head.rotation.set(0,-P.lean*.6,-th*.8+Math.sin(t*fq+1)*.03*mv+(alert?.1:0));
+  const legS=1-.33*c.crouch;
+  c.legs[0].rotation.z=sw-th;c.legs[1].rotation.z=-sw-th;c.legs[0].scale.y=c.legs[1].scale.y=legS+.82*c.sit;   // 前腳：坐下時撐直
+  c.legs[2].rotation.z=-sw+1.15*c.sit;c.legs[3].rotation.z=sw+1.15*c.sit;c.legs[2].scale.y=c.legs[3].scale.y=legS;   // 後腳：坐下時往前折
+  // 尾巴：走路翹高捲成問號、輕腳壓低、被追炸毛、坐下時繞到身體側邊
+  const ta=alert?1.0:P.sneak?-.35:mv?.75:c.sit>.5?-.15:.3+Math.sin(t*1.7)*.12,tc=alert?.15:P.sneak?.15:mv?.6:.85+Math.sin(t*2.3)*.15;
+  c.ta+=(ta-c.ta)*ez;c.tc+=(tc-c.tc)*ez;c.puff+=((alert?1.45:1)-c.puff)*Math.min(1,dt*10);
+  setCatTail(c,t,mv?.6:1);
+  // 耳朵：起疑時轉向、被追和輕腳時往後貼，停著偶爾抖一下
+  const twitch=!mv&&!alert&&Math.sin(t*.9)>.97?Math.sin(t*40)*.25:0;
+  c.ears.forEach(function(e,i){const tgt=alert?.85:P.sneak?.55:sus?.3:twitch*(i?1:-1);e.rotation.z+=(tgt-e.rotation.z)*Math.min(1,dt*12);});
   c.can.visible=P.hasCan;
   if(P.hasCan){const s=big?Math.max(.45,G.catS):1;c.can.scale.setScalar(s);c.can.position.set(-.04*s,big?.46*G.catS:.14,0);}
 }
@@ -459,6 +677,7 @@ function syncDogs(L,P,t,dt){
     m.lid.visible=onSoup;
     if(m.beam)m.beam.visible=!sleep&&d.stunT<=0;
     if(m.mop)m.mop.rotation.y=d.state==='wipe'&&d.busy?Math.sin(t*10)*.5:0;
+    if(m.lamp)m.lamp.rotation.x=d.moving?Math.sin(t*13+i)*.25:Math.sin(t*1.5)*.05;
   });
 }
 function syncBoss(L,P,t,dt){
@@ -490,6 +709,15 @@ G.sync=function(L,P,t,dt){
   G.dropcan.visible=!!L.can;if(L.can){G.dropcan.position.set(L.can.x,Math.abs(Math.sin(t*5))*.03,L.can.y);G.dropcan.rotation.z=L.def.trouble==='walk'?Math.sin(t*8)*.15:0;}
   G.decoy.visible=!!L.decoy;if(L.decoy){G.decoy.position.set(L.decoy.x,0,L.decoy.y);G.decoy.rotation.y=-Math.atan2(L.decoy.vy,L.decoy.vx);}
   G.lure.visible=!!L.lure;if(L.lure)G.lure.position.set(L.lure.x,0,L.lure.y);
+  const D=PH.Seams.draw,th=!!D&&!!D.from&&!!D.hover,n=G.thread.length;
+  if(th){
+    const A=D.from,Bn=D.hover,ok=!!D.res&&D.res.ok,ang=Math.atan2(Bn.y-A.y,Bn.x-A.x);
+    G.threadM.color.set(ok?SEAM.mint:SEAM.coral);
+    G.thread.forEach(function(m,i){
+      const k=(i+.5)/n,x=U.lerp(A.x,Bn.x,k),z=U.lerp(A.y,Bn.y,k),y=.5+Math.sin(k*Math.PI)*.45+Math.sin(t*6+i)*.02;
+      m.visible=i%2===0||ok;m.position.set(x,y,z);m.rotation.set(0,-ang,ok?0:(i%4?.8:-.8));
+    });
+  }else G.thread.forEach(function(m){m.visible=false;});
   const a=P.aim;G.aim.visible=G.aimDot.visible=!!a;
   if(a){const s=.5+Math.sin(t*8)*.08;G.aim.position.set(a.x,.06,a.y);G.aim.scale.set(s,s,1);G.aimDot.position.set(a.x,.055,a.y);}
 };

@@ -8,10 +8,116 @@ let R3,scene,camera,root,sky,hemi,sun,amb,V3,cw=1,ch=1,cv,ov,ox,dpr=1;
 const MATS={},GEO={};
 const FONT="'Chiron GoRound TC','Noto Sans TC','Microsoft JhengHei','PingFang TC',sans-serif";
 
+// 霧面材質：柔和明暗、不反光（手繪童話感，不是亮面塑膠）
 function M(c,o){
   if(typeof c!=='string')return c;
   const key=c+(o?JSON.stringify(o):'');
-  return MATS[key]||(MATS[key]=new T3.MeshStandardMaterial(Object.assign({color:c,flatShading:true,roughness:0.86,metalness:0},o||{})));
+  return MATS[key]||(MATS[key]=new T3.MeshStandardMaterial(Object.assign({color:c,flatShading:false,roughness:0.92,metalness:0},o||{})));
+}
+/* ---------- 程序手繪貼圖：灰階為主，顏色由材質決定；同一種貼圖全遊戲共用 ---------- */
+const TEX={};
+function rng(seed){let s=seed%2147483647;if(s<=0)s+=2147483646;return function(){s=s*16807%2147483647;return (s-1)/2147483646;};}
+function blot(c,r,x,y,rad,col,a){c.globalAlpha=a;c.fillStyle=col;c.beginPath();c.ellipse(x,y,rad,rad*(.5+r()*.6),r()*3,0,6.283);c.fill();c.globalAlpha=1;}
+// 筆刷：一筆是一段有寬度、兩端收尖的短筆觸，疊很多筆做出手繪的色差
+function dabs(c,r,w,h,n,cols,len,wid,ang,angVar,a){
+  c.lineCap='round';
+  for(let i=0;i<n;i++){
+    const x=r()*w,y=r()*h,an=ang+(r()-.5)*angVar,l=len*(.5+r()),dx=Math.cos(an)*l/2,dy=Math.sin(an)*l/2;
+    c.globalAlpha=a*(.5+r()*.5);c.strokeStyle=cols[(r()*cols.length)|0];c.lineWidth=wid*(.5+r()*.8);
+    c.beginPath();c.moveTo(x-dx,y-dy);c.quadraticCurveTo(x+(r()-.5)*wid,y+(r()-.5)*wid,x+dx,y+dy);c.stroke();
+  }
+  c.globalAlpha=1;
+}
+function vignette(c,w,h,k){const g=c.createRadialGradient(w/2,h/2,w*.2,w/2,h/2,w*.75);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,'+k+')');c.fillStyle=g;c.fillRect(0,0,w,h);}
+const PAINT={
+  plaster:function(c,w,h){const r=rng(11);c.fillStyle='#ececec';c.fillRect(0,0,w,h);
+    for(let i=0;i<60;i++)blot(c,r,r()*w,r()*h,10+r()*40,r()<.5?'#ffffff':'#d2d2d2',.16);
+    dabs(c,r,w,h,260,['#ffffff','#dcdcdc','#cfcfcf'],26,7,0,6.3,.22);
+    dabs(c,r,w,h,10,['#b4b4b4'],60,1.5,.2,.6,.3);},
+  wood:function(c,w,h){const r=rng(23);c.fillStyle='#e4e4e4';c.fillRect(0,0,w,h);
+    for(let i=0;i<6;i++){c.globalAlpha=.14;c.fillStyle=r()<.5?'#b8b8b8':'#ffffff';c.fillRect(0,r()*h,w,10+r()*40);}
+    dabs(c,r,w,h,220,['#ffffff','#c8c8c8','#b0b0b0'],70,4,0,.18,.25);
+    c.strokeStyle='#9a9a9a';for(let i=0;i<4;i++){c.globalAlpha=.35;c.lineWidth=2;const x=r()*w,y=r()*h;c.beginPath();c.ellipse(x,y,14+r()*10,4+r()*3,0,0,6.3);c.stroke();}   // 木節
+    c.globalAlpha=1;},
+  plank:function(c,w,h){const r=rng(37);c.fillStyle='#e8e8e8';c.fillRect(0,0,w,h);
+    for(let k=0;k<3;k++){c.globalAlpha=.16;c.fillStyle=r()<.5?'#bdbdbd':'#ffffff';c.fillRect(0,k*h/3,w,h/3);}
+    dabs(c,r,w,h,200,['#ffffff','#c4c4c4','#ababab'],60,4,0,.12,.22);
+    c.globalAlpha=.55;c.fillStyle='#7c7c7c';for(let k=1;k<3;k++)c.fillRect(0,k*h/3-1.5,w,3);
+    c.fillRect(((r()*w)|0),0,3,h/3);c.fillRect(((r()*w)|0),h/3,3,h/3);c.fillRect(((r()*w)|0),2*h/3,3,h/3);
+    c.globalAlpha=1;vignette(c,w,h,.25);},
+  // 石板：博物館、月面
+  stone:function(c,w,h){const r=rng(71);c.fillStyle='#e2e2e2';c.fillRect(0,0,w,h);
+    for(let i=0;i<40;i++)blot(c,r,r()*w,r()*h,14+r()*36,r()<.5?'#f6f6f6':'#c6c6c6',.2);
+    dabs(c,r,w,h,160,['#ffffff','#cccccc'],22,8,0,6.3,.18);
+    c.strokeStyle='#9c9c9c';c.globalAlpha=.4;c.lineWidth=2;c.beginPath();c.moveTo(r()*w,0);c.lineTo(r()*w,h*.4);c.lineTo(r()*w,h*.7);c.stroke();c.globalAlpha=1;vignette(c,w,h,.2);},
+  // 霧面錫：罐頭月亮
+  tin:function(c,w,h){const r=rng(83);c.fillStyle='#e6e6e6';c.fillRect(0,0,w,h);
+    dabs(c,r,w,h,240,['#ffffff','#d0d0d0','#c0c0c0'],90,3,0,.05,.22);
+    for(let i=0;i<14;i++){c.globalAlpha=.3;c.fillStyle='#b8b8b8';c.beginPath();c.arc(r()*w,r()*h,2+r()*2,0,6.3);c.fill();}   // 鉚釘、小凹痕
+    c.globalAlpha=1;},
+  swirl:function(c,w,h){const r=rng(53);c.fillStyle='#e6e6e6';c.fillRect(0,0,w,h);
+    c.strokeStyle='#ffffff';c.lineCap='round';for(let i=0;i<16;i++){c.globalAlpha=.35;c.lineWidth=2+r()*4;const x=r()*w,y=r()*h,rad=8+r()*20;c.beginPath();c.arc(x,y,rad,r()*6,r()*6+2.4);c.stroke();}
+    c.globalAlpha=1;},
+  weave:function(c,w,h){c.fillStyle='#dcdcdc';c.fillRect(0,0,w,h);c.fillStyle='#ffffff';
+    for(let y=0;y<h;y+=16)for(let x=0;x<w;x+=16){c.globalAlpha=.5;if(((x+y)/16)%2)c.fillRect(x+2,y+5,12,6);else c.fillRect(x+5,y+2,6,12);}c.globalAlpha=1;},
+  cloth:function(c,w,h){c.fillStyle='#F1DFC0';c.fillRect(0,0,w,h);
+    c.globalAlpha=.32;c.fillStyle='#E77863';for(let i=0;i<w;i+=32){c.fillRect(i,0,12,h);c.fillRect(0,i,w,12);}
+    c.globalAlpha=.18;c.fillStyle='#315C53';for(let i=16;i<w;i+=32){c.fillRect(i,0,4,h);c.fillRect(0,i,w,4);}c.globalAlpha=1;},
+  fishrug:function(c,w,h){c.fillStyle='#3d6b61';c.fillRect(0,0,w,h);c.strokeStyle='#F1DFC0';c.lineWidth=3;c.lineCap='round';
+    for(let y=20;y<h;y+=42)for(let x=18+(y%84?20:0);x<w;x+=52){c.beginPath();c.moveTo(x-12,y);c.lineTo(x+12,y);for(let k=-1;k<=1;k++){c.moveTo(x+k*6,y-6);c.lineTo(x+k*6,y+6);}c.moveTo(x+12,y);c.lineTo(x+18,y-5);c.moveTo(x+12,y);c.lineTo(x+18,y+5);c.stroke();}
+    c.strokeStyle='#F3BC68';c.lineWidth=5;c.strokeRect(6,6,w-12,h-12);}
+};
+function paint(kind){
+  if(TEX[kind])return TEX[kind];
+  const t=tex(256,256,PAINT[kind]);t.wrapS=t.wrapT=T3.RepeatWrapping;
+  return TEX[kind]=t;
+}
+// 柔邊圓點（粒子、光斑共用）
+function soft(){
+  if(TEX.soft)return TEX.soft;
+  return TEX.soft=tex(64,64,function(c,w,h){const g=c.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.4,'rgba(255,255,255,.55)');g.addColorStop(1,'rgba(255,255,255,0)');c.fillStyle=g;c.fillRect(0,0,w,h);});
+}
+// 光柱的透明度貼圖：上亮下淡，幾道直向光束紋
+function shaftTex(){
+  if(TEX.shaft)return TEX.shaft;
+  return TEX.shaft=tex(128,128,function(c,w,h){
+    const r=rng(97),g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,'#ffffff');g.addColorStop(.7,'#6a6a6a');g.addColorStop(1,'#000000');
+    c.fillStyle=g;c.fillRect(0,0,w,h);
+    for(let i=0;i<14;i++){c.globalAlpha=.25+r()*.3;c.fillStyle=r()<.5?'#000000':'#ffffff';c.fillRect(r()*w,0,3+r()*10,h);}c.globalAlpha=1;
+  });
+}
+function shaftMat(c,op){return new T3.MeshBasicMaterial({color:c,alphaMap:shaftTex(),transparent:true,opacity:op,depthWrite:false,side:T3.DoubleSide,blending:T3.AdditiveBlending,fog:false});}
+function softMat(c,op){return new T3.MeshBasicMaterial({color:c,map:soft(),transparent:true,opacity:op,depthWrite:false,blending:T3.AdditiveBlending});}
+// 帶手繪貼圖的霧面材質
+function MT(c,kind,o){
+  const key='t'+kind+c+(o?JSON.stringify(o):'');
+  return MATS[key]||(MATS[key]=new T3.MeshStandardMaterial(Object.assign({color:c,map:paint(kind),roughness:0.95,metalness:0},o||{})));
+}
+/* ---------- 圓角方塊：家具、櫃子、狗的方正輪廓都用它（幾何依尺寸快取） ---------- */
+const RBG={};
+function rbGeo(w,h,d,r){
+  const key=w.toFixed(2)+'|'+h.toFixed(2)+'|'+d.toFixed(2)+'|'+r.toFixed(3);
+  if(RBG[key])return RBG[key];
+  const b=Math.max(.004,Math.min(r,w*.45,h*.45,d*.45)),iw=w-2*b,ih=h-2*b,cr=Math.min(b,iw*.45,ih*.45);
+  const s=new T3.Shape(),x0=-iw/2,y0=-ih/2;
+  s.moveTo(x0+cr,y0);s.lineTo(x0+iw-cr,y0);s.quadraticCurveTo(x0+iw,y0,x0+iw,y0+cr);
+  s.lineTo(x0+iw,y0+ih-cr);s.quadraticCurveTo(x0+iw,y0+ih,x0+iw-cr,y0+ih);
+  s.lineTo(x0+cr,y0+ih);s.quadraticCurveTo(x0,y0+ih,x0,y0+ih-cr);
+  s.lineTo(x0,y0+cr);s.quadraticCurveTo(x0,y0,x0+cr,y0);
+  const g=new T3.ExtrudeGeometry(s,{depth:Math.max(.002,d-2*b),bevelEnabled:true,bevelThickness:b,bevelSize:b,bevelSegments:2,curveSegments:3});
+  g.center();
+  return RBG[key]=g;
+}
+function rb(w,h,d,r,c,x,y,z,p){return add(rbGeo(w,h,d,r),c,1,1,1,x,y,z,p);}
+// 魚骨圖樣（把手、縫線符號共用）：橫躺在 XY 平面，s 是大小
+function fishMesh(p,mat,s){
+  const g=gp(0,0,0,p);
+  add(GEO.box,mat,.5*s,.05*s,.05*s,0,0,0,g);
+  [-.14,0,.14].forEach(function(dx){add(GEO.box,mat,.05*s,.24*s,.05*s,dx*s,0,0,g);});
+  add(GEO.ico,mat,.07*s,.07*s,.05*s,-.3*s,0,0,g);
+  add(GEO.box,mat,.16*s,.045*s,.05*s,.3*s,.05*s,0,g).rotation.z=.7;add(GEO.box,mat,.16*s,.045*s,.05*s,.3*s,-.05*s,0,g).rotation.z=-.7;
+  g.children.forEach(function(m){m.castShadow=false;m.receiveShadow=false;});
+  return g;
 }
 function MB(c,op,addv){
   const key='b'+c+op+(addv?'a':'');
@@ -29,7 +135,13 @@ function gp(x,y,z,p){const g=new T3.Group();g.position.set(x||0,y||0,z||0);(p||G
 function flat(geo,mat,x,y,z,p){const m=new T3.Mesh(geo,mat);m.rotation.x=Math.PI/2;m.position.set(x,y,z);(p||G.cur).add(m);return m;}
 function rot(m,rx,ry,rz){if(rx)m.rotation.x=rx;if(ry)m.rotation.y=ry;if(rz)m.rotation.z=rz;return m;}
 function tex(w,h,fn){const c=document.createElement('canvas');c.width=w;c.height=h;fn(c.getContext('2d'),w,h);const t=new T3.CanvasTexture(c);return t;}
-G.h={M:M,MB:MB,add:add,bx:bx,bl:bl,cy:cy,cn:cn,gp:gp,flat:flat,GEO:GEO,T3:T3,tex:tex,FONT:FONT};
+G.h={M:M,MB:MB,MT:MT,fishMesh:fishMesh,add:add,bx:bx,bl:bl,cy:cy,cn:cn,gp:gp,flat:flat,rb:rb,rbGeo:rbGeo,paint:paint,GEO:GEO,T3:T3,tex:tex,FONT:FONT};
+// 動態點光源：全場最多 6 盞（燈籠也算），減少特效模式完全不建
+const LIGHT_CAP=6;
+function pointLight(c,int,dist,x,y,z,p){
+  if(PH.opt.lowfx||G.lanterns>=LIGHT_CAP)return null;
+  G.lanterns++;const l=new T3.PointLight(c,int,dist,1.6);l.position.set(x,y,z);(p||G.cur).add(l);return l;
+}
 
 /* ---------- 給關卡裝飾用的工具組 ---------- */
 const B=G.kit={
@@ -45,13 +157,13 @@ const B=G.kit={
     add(GEO.box,M(c,{emissive:c,emissiveIntensity:0.9}),.22,.28,.22,0,0,0,g).castShadow=false;
     bx(.3,.05,.3,'#3a2a2a',0,.17,0,g);bx(.26,.04,.26,'#3a2a2a',0,-.16,0,g);bx(.03,.3,.03,'#3a2a2a',0,.34,0,g);
     const halo=new T3.Mesh(GEO.ico,MB(c,0.16,true));halo.scale.set(.55,.55,.55);g.add(halo);
-    if(G.lanterns<5&&!PH.opt.lowfx){G.lanterns++;const l=new T3.PointLight(c,0.75,7.5,1.6);l.position.set(0,-.1,0);g.add(l);}
+    pointLight(c,0.75,7.5,0,-.1,0,g);
     G.anim.push(function(t){halo.scale.setScalar(.5+Math.sin(t*2.3+x)*.05);});
     return g;
   },
   // 旗串：兩點之間下垂的一排小三角旗
   bunting:function(x0,z0,x1,z1,y){
-    const cols=['#ef5d50','#ffd23f','#7fd0e6','#8fc3b4','#e98fb0','#f6a23c'],len=Math.hypot(x1-x0,z1-z0),n=Math.max(4,Math.round(len/0.55)),a=Math.atan2(z1-z0,x1-x0);
+    const cols=['#E77863','#F3BC68','#86E0C2','#F1DFC0','#6E8D55','#D99556'],len=Math.hypot(x1-x0,z1-z0),n=Math.max(4,Math.round(len/0.55)),a=Math.atan2(z1-z0,x1-x0);
     for(let i=0;i<=n;i++){
       const k=i/n,sag=Math.sin(k*Math.PI)*Math.min(0.5,len*0.04);
       const m=add(GEO.tri,M(cols[i%6],{side:T3.DoubleSide}),.2,.26,.2,x0+(x1-x0)*k,y-sag,z0+(z1-z0)*k);
@@ -59,11 +171,34 @@ const B=G.kit={
     }
   },
   // 光柱：半透明的光束，營造霧氣裡的光
+  // 假體積光：上亮下淡、帶幾道光束紋的半透明光柱，地上一圈柔邊光斑，光裡飄著灰塵（減少特效時只剩光柱）
   shaft:function(x,z,r,h,c){
-    const m=new T3.Mesh(new T3.CylinderGeometry(r*0.3,r,h,12,1,true),MB(c,0.085,true));
+    const m=new T3.Mesh(new T3.CylinderGeometry(r*0.3,r,h,16,1,true),shaftMat(c,.2));
     m.position.set(x,h/2,z);G.cur.add(m);
-    const d=flat(GEO.circ,MB(c,0.1,true),x,.02,z);d.scale.set(r,r,1);
+    const d=new T3.Mesh(GEO.circ,softMat(c,.22));d.rotation.x=-Math.PI/2;d.position.set(x,.02,z);d.scale.set(r*1.1,r*1.1,1);G.cur.add(d);
+    B.motes(x,z,r*1.2,r*1.2,h*.9,16,c,'dust');
     return m;
+  },
+  // 環境粒子：dust 灰塵慢飄、rise 泡泡上升、spark 夢境亮點閃爍、petal 花瓣斜飄、star 星塵
+  motes:function(cx,cz,w,d,h,n,c,mode,y0){
+    if(PH.opt.lowfx)n=Math.floor(n/3);if(n<=0)return null;
+    y0=y0||.2;
+    const r=rng((cx*31+cz*17+n)|0),pos=new Float32Array(n*3),sp=[];
+    for(let i=0;i<n;i++){pos[i*3]=cx+(r()-.5)*w;pos[i*3+1]=y0+r()*h;pos[i*3+2]=cz+(r()-.5)*d;sp.push(r()*6.3);}
+    const g=new T3.BufferGeometry(),at=new T3.BufferAttribute(pos,3);g.setAttribute('position',at);
+    const mat=new T3.PointsMaterial({color:c,map:soft(),size:mode==='rise'?.14:mode==='petal'?.12:.07,transparent:true,opacity:.85,depthWrite:false,blending:T3.AdditiveBlending,sizeAttenuation:true});
+    const p=new T3.Points(g,mat);G.cur.add(p);
+    G.anim.push(function(t,dt){
+      for(let i=0;i<n;i++){
+        const k=i*3,s=sp[i];
+        if(mode==='rise'){pos[k+1]+=dt*(.25+(i%5)*.06);pos[k]+=Math.sin(t*1.3+s)*dt*.08;if(pos[k+1]>y0+h)pos[k+1]=y0;}
+        else if(mode==='petal'){pos[k+1]-=dt*.18;pos[k]+=dt*.25;pos[k+2]+=Math.sin(t+s)*dt*.12;if(pos[k+1]<y0){pos[k+1]=y0+h;pos[k]-=w*.6;}}
+        else{pos[k]+=Math.sin(t*.4+s)*dt*.06;pos[k+1]+=Math.sin(t*.3+s*2)*dt*.05;pos[k+2]+=Math.cos(t*.35+s)*dt*.06;}
+      }
+      at.needsUpdate=true;
+      if(mode==='spark'||mode==='star')mat.opacity=.55+Math.sin(t*2.2)*.3;
+    });
+    return p;
   },
   photo:function(x,y,z,ry){
     const g=gp(x,y,z);g.rotation.y=ry||0;
@@ -124,7 +259,47 @@ const B=G.kit={
     const p=new T3.Points(g,new T3.PointsMaterial({color:'#dff6ff',size:.09,transparent:true,opacity:.7}));G.cur.add(p);
     G.anim.push(function(t,dt){for(let i=0;i<n;i++){pos[i*3+1]+=sp[i]*dt;if(pos[i*3+1]>9)pos[i*3+1]=0;}at.needsUpdate=true;});
   },
-  governor:function(x,z){const o=G.makeBoss();o.g.position.set(x,0,z);o.g.rotation.y=0;return o.g;}
+  governor:function(x,z){const o=G.makeBoss();o.g.position.set(x,0,z);o.g.rotation.y=0;return o.g;},
+  // 以下是美術整合新增的工具
+  rbox:function(w,h,d,r,c,x,y,z,ry){const m=rb(w,h,d,r,c,x,y,z);if(ry)m.rotation.y=ry;return m;},
+  mat:MT,
+  light:function(c,int,dist,x,y,z){return pointLight(c,int,dist,x,y,z);},
+  // 只發光、不照亮別人的小燈（低成本，減少特效模式也保留）
+  glowBall:function(x,y,z,r,c){const g=gp(x,y,z),m=add(GEO.ico,M(c,{emissive:c,emissiveIntensity:.95}),r,r,r,0,0,0,g);m.castShadow=false;
+    const h=new T3.Mesh(GEO.ico,MB(c,.14,true));h.scale.setScalar(r*2.4);g.add(h);return g;},
+  // 平鋪在地上的布、地毯（只是裝飾，不影響碰撞）
+  cloth:function(x,z,w,d,kind,c,ry){const m=new T3.Mesh(GEO.plane,MT(c||'#ffffff',kind,{side:T3.DoubleSide}));m.rotation.x=-Math.PI/2;m.rotation.z=ry||0;m.scale.set(w,d,1);m.position.set(x,.014,z);m.receiveShadow=true;G.cur.add(m);return m;},
+  // 藤蔓：沿著牆頂下垂的一串葉子，偶爾垂下一條；只放在牆面、天花板高度
+  vine:function(x0,z0,x1,z1,y,seed){
+    const r=rng(seed||7),len=Math.hypot(x1-x0,z1-z0),n=Math.max(4,Math.round(len*4)),cols=['#6E8D55','#5d7d48','#7f9c5f','#4f6e44'];
+    for(let i=0;i<=n;i++){
+      const k=i/n,sag=Math.sin(k*Math.PI)*Math.min(.45,len*.06),x=x0+(x1-x0)*k,z=z0+(z1-z0)*k;
+      const m=bl(.09+r()*.05,.05,.07+r()*.04,cols[i%4],x,y-sag,z);m.rotation.y=r()*3;m.castShadow=false;
+      if(r()<.18){const dl=.4+r()*.7;for(let j=1;j<5;j++){const q=bl(.06,.04,.05,cols[(i+j)%4],x+(r()-.5)*.08,y-sag-j*dl/4,z);q.castShadow=false;}}
+    }
+  },
+  // 有葉子的小盆栽（放在檯面上）
+  herb:function(x,y,z,s,pot){
+    s=s||1;const g=gp(x,y,z);cy(.13*s,.18*s,pot||'#c4704f',0,.09*s,0,g);
+    for(let i=0;i<5;i++){const a=i*1.26,m=bl(.07*s,.13*s,.05*s,i%2?'#6E8D55':'#86a865',Math.cos(a)*.06*s,.26*s,Math.sin(a)*.06*s,g);m.rotation.z=Math.cos(a)*.5;m.rotation.x=Math.sin(a)*.5;m.castShadow=false;}
+    return g;
+  },
+  // 從上方垂下的盆栽
+  hanger:function(x,y,z,len){
+    cy(.012,len,'#5a3d24',x,y+len/2,z).castShadow=false;
+    const g=gp(x,y,z);cy(.16,.16,'#c4704f',0,0,0,g);
+    for(let i=0;i<7;i++){const a=i*.9,dl=.2+(i%3)*.18;for(let j=0;j<3;j++){const m=bl(.05,.04,.04,j%2?'#6E8D55':'#86a865',Math.cos(a)*.15,-.06-j*dl/3,Math.sin(a)*.15,g);m.castShadow=false;}}
+    return g;
+  },
+  // 簡化光片：從窗戶斜落到檯面的半透明光（不落到走道，不遮狗的路線）；減少特效時不建
+  shaftAt:function(x,y0,z,r,h,c,op){
+    if(PH.opt.lowfx)return null;
+    const m=new T3.Mesh(new T3.CylinderGeometry(r*.35,r,h,14,1,true),shaftMat(c,(op||.06)*2.4));m.position.set(x,y0+h/2,z);G.cur.add(m);
+    B.motes(x,z,r*1.2,r*1.2,h,10,c,'dust',y0);
+    return m;
+  },
+  // 天花板木樑：框住天空，讓室內有「屋頂」的感覺（高於所有鏡頭高度）
+  beam:function(x0,z0,x1,z1,y){const len=Math.hypot(x1-x0,z1-z0),m=rb(len,.22,.26,.05,MT('#6b4430','wood'),(x0+x1)/2,y,(z0+z1)/2);m.rotation.y=-Math.atan2(z1-z0,x1-x0);m.castShadow=false;return m;}
 };
 
 /* ---------- 特效介面（世界邏輯透過 PH.FX 呼叫） ---------- */
@@ -164,6 +339,13 @@ G.init=function(canvas,overlay){
   const sg=new T3.SphereGeometry(180,24,12);sg.setAttribute('color',new T3.BufferAttribute(new Float32Array(sg.attributes.position.count*3),3));
   sky=new T3.Mesh(sg,new T3.MeshBasicMaterial({vertexColors:true,side:T3.BackSide,fog:false,depthWrite:false}));scene.add(sky);
   G.ok=true;G.scene=scene;G.camera=camera;
+  // 輝光（Bloom）：門檻高，只有自發光的主罐、貓縫、燈籠會暈開；減少特效或手機上不開。後製腳本沒載到就直接略過
+  try{
+    if(T3.EffectComposer&&T3.RenderPass&&T3.UnrealBloomPass){
+      G.comp=new T3.EffectComposer(R3);G.comp.addPass(new T3.RenderPass(scene,camera));
+      G.bloom=new T3.UnrealBloomPass(new T3.Vector2(256,256),.28,.3,.96);G.comp.addPass(G.bloom);   // 實測：門檻 .88 會把亮色場景整片洗白，調到只有自發光才暈開
+    }
+  }catch(e){G.comp=null;}
   window.addEventListener('resize',G.resize);G.resize();
   return true;
 };
@@ -180,6 +362,7 @@ G.resize=function(){
   ov.width=Math.round(cw*dpr);ov.height=Math.round(ch*dpr);
   camera.aspect=cw/ch;camera.updateProjectionMatrix();
   G.cw=cw;G.ch=ch;
+  if(G.comp){G.comp.setPixelRatio(dpr);G.comp.setSize(cw,ch);}
 };
 
 /* ---------- 建立關卡場景 ---------- */
@@ -188,37 +371,80 @@ function run(L,lg,c0,c1,r,g){
   const col=lg.col||pal.block,top=lg.top||pal.top;
   switch(m){
   case 'wall':{
-    const a=bx(len,h,1,pal.wall,x,h/2,z,g);a.castShadow=false;
-    bx(len+.03,.9,1.03,pal.trim,x,.45,z,g).castShadow=false;bx(len+.05,.07,1.05,'#ffffff',x,.93,z,g).castShadow=false;
+    // 灰泥牆＋木護牆板，頂端一條木壓條；全部是霧面手繪貼圖
+    const a=add(GEO.box,MT(pal.wall,pal.wallTex||'plaster'),len,h,1,x,h/2,z,g);a.castShadow=false;
+    add(GEO.box,MT(pal.trim,'wood'),len+.03,.9,1.03,x,.45,z,g).castShadow=false;
+    add(GEO.box,MT(pal.cap||'#F1DFC0','wood'),len+.05,.07,1.05,x,.93,z,g).castShadow=false;
+    add(GEO.box,MT('#6b4430','wood'),len+.04,.1,1.04,x,h-.05,z,g).castShadow=false;
+    break;}
+  case 'counter':{
+    // 木櫃：櫃門只畫在面向走道的那一側，門板略歪，魚骨形把手
+    const wood=lg.col||pal.block,top=lg.top||pal.top;
+    rb(len-.02,h-.14,.98,.05,MT(wood,'wood'),x,(h-.14)/2+.02,z,g);
+    rb(len+.04,.12,1.04,.04,MT(top,'wood'),x,h-.06,z,g);
+    bx(len-.1,.05,.9,'#3b2a22',x,.025,z,g).castShadow=false;
+    const open=function(cc,rr){if(cc<0||rr<0||cc>=L.w||rr>=L.h)return false;const t=L.leg[L.base[rr*L.w+cc]];return !!t&&t.k!=='solid';};
+    for(let i=0;i<len;i++){
+      const cx=c0+i+.5;
+      [-1,1].forEach(function(s){
+        if(!open(c0+i,r+s))return;
+        const tilt=(((c0+i)*7+r*3+s)%5-2)*.012,d=rb(.8,h*.58,.05,.025,MT(lg.door||'#9a6648','wood'),cx,h*.45,z+s*.5,g);d.rotation.z=tilt;d.castShadow=false;
+        const f=fishMesh(g,M('#F3BC68'),.32);f.position.set(cx+.22,h*.62,z+s*.535);
+      });
+    }
+    break;}
+  case 'basket':{
+    // 一籃蔬菜：裝飾比可互動物件低調
+    for(let i=0;i<len;i++){
+      const cx=c0+i+.5;cy(.42,h-.08,MT('#b98a5a','weave'),cx,(h-.08)/2,z,g);
+      bl(.16,.14,.16,'#6E8D55',cx-.12,h,z+.05,g);bl(.14,.12,.14,'#d9874a',cx+.12,h-.02,z-.08,g);bl(.12,.1,.12,'#c9b26a',cx+.02,h+.04,z+.14,g);
+    }
     break;}
   case 'cloudwall':{
-    bx(len,h*.7,1,'#fff6ee',x,h*.35,z,g).castShadow=false;
-    for(let i=0;i<len;i++){const m2=bl(.62,.5,.62,'#ffffff',c0+i+.5,h*.72+((c0+i+r)%2)*.12,z,g);m2.castShadow=false;}
+    bx(len,h*.7,1,'#efe2d2',x,h*.35,z,g).castShadow=false;
+    for(let i=0;i<len;i++){const m2=bl(.62,.5,.62,'#f4eadf',c0+i+.5,h*.72+((c0+i+r)%2)*.12,z,g);m2.castShadow=false;}
     break;}
   case 'rim':{
-    bx(len,h,1,'#aab4c8',x,h/2,z,g).castShadow=false;bx(len+.04,.14,1.04,'#ffd23f',x,h-.2,z,g).castShadow=false;bx(len+.02,.5,1.02,'#8a93a8',x,.25,z,g).castShadow=false;
+    add(GEO.box,MT('#b4b9c2','tin'),len,h,1,x,h/2,z,g).castShadow=false;bx(len+.04,.14,1.04,'#E8C77A',x,h-.2,z,g).castShadow=false;add(GEO.box,MT('#8f95a2','tin'),len+.02,.5,1.02,x,.25,z,g).castShadow=false;
     break;}
   case 'block':
-    bx(len,h,1,col,x,h/2,z,g);bx(len+.04,.08,1.04,top,x,h+.02,z,g);
+    // 手工感：圓角＋手繪貼圖（只是外觀，碰撞照格子）
+    rb(len,h,1,Math.min(.08,h*.2),MT(col,lg.tex||pal.blockTex||'wood'),x,h/2,z,g);rb(len+.04,.08,1.04,.03,MT(top,lg.tex||pal.blockTex||'wood'),x,h+.02,z,g);
     if(h>1.6)for(let i=0;i<len;i++)bx(.5,.06,.02,top,c0+i+.5,h*.62,z+.51,g).castShadow=false;
     break;
   case 'gapblock':{
     const lo=lg.lo||.34;
-    bx(len,h-lo,1,col,x,(h+lo)/2,z,g);bx(len+.04,.08,1.04,top,x,h+.02,z,g);
+    rb(len,h-lo,1,.05,MT(col,'wood'),x,(h+lo)/2,z,g);rb(len+.04,.08,1.04,.03,MT(top,'wood'),x,h+.02,z,g);
     [c0+.08,c1+.92].forEach(function(px){cy(.06,lo,'#5a3d24',px,lo/2,z-.4,g);cy(.06,lo,'#5a3d24',px,lo/2,z+.4,g);});
     const s=flat(GEO.plane,MB('#1a1022',0.35),x,.011,z,g);s.scale.set(len*.96,.96,1);
+    // 小洞入口：從地面視角看得出來的深色拱門，門口有磨損、爪痕和一撮貓毛
+    const pass=function(cc,rr){if(cc<0||rr<0||cc>=L.w||rr>=L.h)return false;const t=L.leg[L.base[rr*L.w+cc]];return !!t&&t.k!=='solid';};
+    const mouth=function(px,pz,ry,ox,oz){
+      const a=new T3.Mesh(GEO.circ,MB('#140c1c',.92));a.scale.set(.3,Math.min(.42,lo*.95),1);a.position.set(px,0,pz);a.rotation.y=ry;g.add(a);
+      const rim=new T3.Mesh(GEO.ring,MB('#F1DFC0',.55));rim.scale.set(.33,Math.min(.45,lo*1.02),1);rim.position.set(px,0,pz);rim.rotation.y=ry;g.add(rim);
+      for(let k=-1;k<=1;k++){const sc=flat(GEO.plane,MB('#F1DFC0',.45),px+ox*.3+(oz?k*.07:0),.016,pz+oz*.3+(ox?k*.07:0),g);sc.scale.set(ox?.22:.025,ox?.025:.22,1);}
+      [[.18,.1],[-.2,.16]].forEach(function(q){const t=bl(.016,.006,.03,'#e9d6b8',px+ox*.42+(oz?q[0]:q[1]*.3),.008,pz+oz*.42+(ox?q[0]:q[1]*.3),g);t.castShadow=false;t.rotation.y=q[0]*5;});   // 一小撮貓毛，壓扁貼地，不像可撿的東西
+    };
+    for(let i=0;i<len;i++){
+      const cc=c0+i,cx=cc+.5;
+      if(pass(cc,r-1))mouth(cx,r-.005,0,0,-1);
+      if(pass(cc,r+1))mouth(cx,r+1.005,0,0,1);
+      if(i===0&&pass(cc-1,r))mouth(cc-.005,z,Math.PI/2,-1,0);
+      if(i===len-1&&pass(cc+1,r))mouth(cc+1.005,z,Math.PI/2,1,0);
+    }
     break;}
   case 'table':
     bx(len,.1,1,col,x,h-.02,z,g);
     [c0+.12,c1+.88].forEach(function(px){cy(.07,h-.06,'#e58f4e',px,(h-.06)/2,z,g);});
     break;
   case 'sofa':
-    bx(len,.3,1,'#5b8def',x,.38,z,g);bx(len,.62,.34,'#4a79d8',x,.64,z-.33,g);
-    bx(.3,.5,1,'#4a79d8',c0+.15,.5,z,g);bx(.3,.5,1,'#4a79d8',c1+.85,.5,z,g);
-    for(let i=0;i<len;i++)bx(.8,.12,.6,'#7aa5f5',c0+i+.5,.56,z+.1,g);
+    rb(len,.3,1,.08,MT('#4f7f74','weave'),x,.38,z,g);rb(len,.62,.34,.1,MT('#3d6b61','weave'),x,.64,z-.33,g);
+    rb(.3,.5,1,.1,MT('#3d6b61','weave'),c0+.15,.5,z,g);rb(.3,.5,1,.1,MT('#3d6b61','weave'),c1+.85,.5,z,g);
+    for(let i=0;i<len;i++)rb(.8,.12,.6,.05,MT('#F1DFC0','weave'),c0+i+.5,.56,z+.1,g);
     break;
   case 'rack':
-    cy(.05,1.5,'#b98250',x-.35,.75,z,g);cy(.05,1.5,'#b98250',x+.35,.75,z,g);bx(.8,.05,.05,'#b98250',x,1.45,z,g);
+    cy(.05,1.5,MT('#805238','wood'),x-.35,.75,z,g);cy(.05,1.5,MT('#805238','wood'),x+.35,.75,z,g);rb(.86,.07,.07,.02,MT('#805238','wood'),x,1.45,z,g);
+    bl(.06,.06,.06,'#F3BC68',x-.35,1.52,z,g);bl(.06,.06,.06,'#F3BC68',x+.35,1.52,z,g);
     break;
   case 'fence':
     // 光柵欄：只有影子穿得過
@@ -241,7 +467,9 @@ G.load=function(L){
   scene.fog=new T3.Fog(pal.fog,pal.fogNear,pal.fogFar);
   setSky(pal.sky,pal.sky2||pal.fog);
   hemi.color.set(mood.hemi[0]);hemi.groundColor.set(mood.hemi[1]);hemi.intensity=mood.hemi[2];
-  amb.color.set(mood.amb||'#000000');amb.intensity=mood.amb?0.6:0;
+  amb.color.set(mood.amb||'#000000');amb.intensity=mood.amb?(mood.ambI||0.6):0;
+  // 偷罐後的警戒色：環境光慢慢偏向珊瑚紅並微微脈動（只有設定了 mood.alarm 的關卡）
+  G.moodK=0;G.moodBase=new T3.Color(mood.hemi[0]);G.moodAlarm=mood.alarm?new T3.Color(mood.alarm):null;
   sun.color.set(mood.sun[0]);sun.intensity=mood.sun[1];
   const sp=mood.sun[2];sun.position.set(sp[0],sp[1],sp[2]);sun.target.position.set(w/2,0,h/2);
   const sc=sun.shadow.camera,hs=Math.max(w,h)*0.62+4;sc.left=-hs;sc.right=hs;sc.top=hs;sc.bottom=-hs;sc.near=1;sc.far=120;sc.updateProjectionMatrix();
@@ -254,7 +482,7 @@ G.load=function(L){
     if(fl!=null)tiles.push({c:c,r:r,fl:fl,y:-.15,ty:-.15});
   }
   G.tiles=tiles;
-  const fm=new T3.InstancedMesh(new T3.BoxGeometry(.985,.3,.985),new T3.MeshStandardMaterial({color:'#ffffff',flatShading:true,roughness:.92}),Math.max(1,tiles.length));
+  const fm=new T3.InstancedMesh(new T3.BoxGeometry(.985,.3,.985),new T3.MeshStandardMaterial({color:'#ffffff',map:paint(pal.floorTex||'plank'),roughness:.95}),Math.max(1,tiles.length));
   fm.receiveShadow=true;fm.frustumCulled=false;
   const col=new T3.Color();G.mtx=new T3.Matrix4();
   tiles.forEach(function(q,i){
@@ -287,8 +515,10 @@ G.load=function(L){
   // 湯／海
   G.liquid=null;
   if(pal.liquid){
-    G.liquid=add(GEO.box,new T3.MeshStandardMaterial({color:pal.liquid,roughness:.3,flatShading:true,transparent:true,opacity:.93}),w+30,.3,h+30,w/2,pal.liquidY,h/2);
-    G.liquid.castShadow=false;G.ly=pal.liquidY;
+    // 湯／水面：簡化平面＋緩慢流動的手繪漩渦，不做流體模擬
+    const lt=paint('swirl').clone();lt.needsUpdate=true;lt.wrapS=lt.wrapT=T3.RepeatWrapping;lt.repeat.set((w+30)/3,(h+30)/3);
+    G.liquid=add(GEO.box,new T3.MeshStandardMaterial({color:pal.liquid,map:lt,roughness:.55,transparent:true,opacity:.94}),w+30,.3,h+30,w/2,pal.liquidY,h/2);
+    G.liquid.castShadow=false;G.ly=pal.liquidY;G.liqTex=lt;
   }
   // 地基：關卡外圍的底色
   const base=bx(w+60,.4,h+60,pal.fog,w/2,pal.liquid?-1.9:-.52,h/2);base.castShadow=false;
@@ -315,6 +545,7 @@ function updFloor(L,dt){
   if(G.liquid){
     const pal=L.def.pal,tg=pal.liquidRise&&L.f[pal.liquidRise]?-.3:pal.liquidY;
     G.ly+=(tg-G.ly)*Math.min(1,dt*1.4);G.liquid.position.y=G.ly+Math.sin(G.t*1.3)*.015;
+    if(G.liqTex){G.liqTex.offset.x=(G.liqTex.offset.x+dt*.018)%1;G.liqTex.offset.y=Math.sin(G.t*.4)*.04;}
   }
 }
 
@@ -382,7 +613,7 @@ function updFx(dt){
   for(let i=0;i<pool.parts.length;i++){
     const m=pool.parts[i],p=G.parts[i];
     if(!p){m.visible=false;continue;}
-    m.visible=true;m.position.set(p.x,p.y,p.z);const s=.05+p.a*.07;m.scale.set(s,s,s);m.material.color.set(p.c);
+    m.visible=true;m.position.set(p.x,p.y,p.z);const s=.025+p.a*.035;m.scale.set(s,s,s);m.material.color.set(p.c);
   }
   for(let i=G.rings.length-1;i>=0;i--){const r=G.rings[i];r.t+=dt;if(r.t>.9)G.rings.splice(i,1);}
   for(let i=0;i<pool.rings.length;i++){
@@ -497,8 +728,8 @@ function drawOverlay(dt){
     if(D.cx>=0){c.fillStyle='#fbeed6';c.strokeStyle='#2b1b2e';c.lineWidth=2.5;c.beginPath();c.arc(D.cx,D.cy,7,0,6.3);c.fill();c.stroke();
       for(let i=-1;i<=1;i++){c.beginPath();c.arc(D.cx+i*7,D.cy-10+Math.abs(i)*3,3.4,0,6.3);c.fill();c.stroke();}}
     // 專注值
-    const fk=P.focus/PH.CFG.seam.focusMax;c.fillStyle='rgba(43,27,46,.8)';c.fillRect(cw/2-71,ch-150,142,12);c.fillStyle=fk>0?'#7fd0e6':'#777';c.fillRect(cw/2-70,ch-149,140*fk,10);
-    c.font='800 12px '+FONT;c.textAlign='center';c.textBaseline='bottom';c.fillStyle='#fbeed6';c.fillText(fk>0?'畫縫專注（時間變慢）':'專注用完，時間恢復正常',cw/2,ch-153);
+    const fk=P.focus/PH.CFG.seam.focusMax;c.fillStyle='rgba(43,27,46,.8)';c.fillRect(cw/2-71,ch-196,142,12);c.fillStyle=fk>0?'#7fd0e6':'#777';c.fillRect(cw/2-70,ch-195,140*fk,10);   // 實測：放在 ch-150 會被底部提示框壓住
+    c.font='800 12px '+FONT;c.textAlign='center';c.textBaseline='bottom';c.fillStyle='#fbeed6';c.fillText(fk>0?'畫縫專注（時間變慢）':'專注用完，時間恢復正常',cw/2,ch-199);
   }
 }
 G.draw=function(dt){
@@ -510,7 +741,14 @@ G.draw=function(dt){
   if(L.def.draw)L.def.draw(L,G.t);
   updCamera(dt);
   updFx(dt);
-  R3.render(scene,camera);
+  if(G.moodAlarm){
+    G.moodK+=((L.theft?1:0)-G.moodK)*Math.min(1,dt*.8);
+    const pulse=PH.opt.flash?0:Math.sin(G.t*2.4)*.08;
+    hemi.color.copy(G.moodBase).lerp(G.moodAlarm,U.clamp(G.moodK*(.32+pulse),0,1));
+  }
+  if(G.comp&&!PH.opt.lowfx&&!PH.mobile){
+    try{G.comp.render(dt);}catch(e){G.comp=null;R3.render(scene,camera);}   // 後製出錯就退回一般繪製，不讓畫面黑掉
+  }else R3.render(scene,camera);
   drawOverlay(dt);
   watchFps(dt);
 };

@@ -8,12 +8,13 @@ PH.defLevel({
   id:'museum',title:'第三關',name:'禁止做夢的博物館',size:[22,21],next:'market',
   reward:'shadow',canName:'午夜墨魚罐',trouble:'glow',coreR:99,cpTheft:[11.5,2.6],
   lockMsg:'秩序局廣播：展櫃失竊！所有夢境甦醒，探照燈改掃主通道。',
-  pal:{sky:'#141026',sky2:'#3a2a5c',fog:'#1c1634',fogNear:12,fogFar:40,wall:'#4a3f6b',trim:'#c9a24a',floor:['#3b3358','#463c66','#5a3f4f','#66485a'],block:'#7a5a3c',top:'#c9a24a'},
-  mood:{hemi:['#8f7fd0','#2a2140',0.5],sun:['#b9a8ff',0.32,[10,14,3]],amb:'#241c3c',dark:true},
+  // 美術：深藍綠牆面、舊木與黃銅、琥珀展櫃、局部紫色夢境光
+  pal:{sky:'#0c171c',sky2:'#1f3d44',fog:'#122428',fogNear:12,fogFar:40,wall:'#24474d',trim:'#6b4430',cap:'#c9a24a',floor:['#6a4a34','#74523a','#4f4258','#594a62'],block:'#6b4430',top:'#c9a24a'},
+  mood:{hemi:['#a6cccc','#1a2e32',0.6],sun:['#c9b8ff',0.3,[10,14,3]],amb:'#1b3236',ambI:0.55,dark:true},
   ops:[['.',8,1,18,3],['P',11,1,11,1],['.',8,4,8,4],['.',18,4,18,4],['.',1,5,20,8],['L',16,5,16,7],
     [',',1,10,4,12],[',',6,10,9,12],['.',8,9,8,9],[',',12,10,20,12],['.',18,9,18,9],[',',20,13,20,13],[',',1,14,20,15],[',',2,13,2,13],
     [',',5,16,5,16],[',',1,17,12,19],['%',7,17,7,19]],
-  legend:{L:{k:'solid',h:0.55,m:'block',col:'#8a2f3f',top:'#c9a24a'},P:{k:'solid',h:0.8,m:'block',col:'#2a2140',top:'#c9a24a'}},
+  legend:{L:{k:'solid',h:0.55,m:'block',col:'#7a3a3a',top:'#c9a24a'},P:{k:'solid',h:0.8,m:'block',col:'#2e3a3c',top:'#c9a24a',tex:'stone'}},
   shade:[[4,17,10,19]],
   start:{x:2.5,y:11.5,box:'home',yaw:0},
   ents:[
@@ -84,10 +85,14 @@ PH.defLevel({
     B.sign('寄物處',2.5,2.3,9.06,0,1.4,.4,'#2a2140','#e8e0ff');
     B.cyl(.07,1.6,'#c9a24a',6.9,.8,5.15);B.sign('站牌',6.9,1.5,5.2,0,.6,.3,'#ffd23f','#2a2140');
     [[3,5.03],[6,5.03],[15.5,8.97],[19,5.03]].forEach(function(q,i){B.box(1.2,.9,.06,['#ff8fa3','#7fd0e6','#ffd23f','#8fc3b4'][i],q[0],1.7,q[1]);B.box(1.34,1.04,.04,'#c9a24a',q[0],1.7,q[1]+(q[1]<6?-.02:.02));});
-    B.lantern(4,2.2,6.5,'#ffb86b');B.lantern(12,2.2,6.5,'#ffb86b');B.lantern(19,2.2,6.5,'#ffb86b');B.lantern(2.5,1.8,10.6,'#ffcf7a');B.lantern(16,1.8,11,'#ffb86b');
-    B.shaft(11.5,2.2,1.3,3,'#b9a8ff');
-    [[1.6,10.4],[1.6,12.5],[3.4,12.5]].forEach(function(q){B.box(.7,1.5,.5,'#5a6aa8',q[0],.75,q[1]);});
-    B.rug(11.5,2.6,1.2,'#8a2f3f','#c9a24a');
+    B.lantern(4,2.2,6.5,'#F3BC68');B.lantern(12,2.2,6.5,'#F3BC68');B.lantern(19,2.2,6.5,'#F3BC68');B.lantern(2.5,1.8,10.6,'#F3BC68');B.lantern(16,1.8,11,'#F3BC68');
+    B.shaft(11.5,2.2,1.3,3,'#b39ae0');
+    // 琥珀展櫃的光（自發光，不加點光源）＋局部紫色夢境亮點
+    [[3,5.03],[6,5.03],[19,5.03]].forEach(function(q){B.glowBall(q[0],2.35,q[1]+.12,.06,'#F3BC68');});
+    B.motes(11,8,18,10,2.6,40,'#b39ae0','spark');B.motes(11.5,3,4,3,2,14,'#F3BC68','dust');
+    B.vine(1.1,5,1.1,13,3.0,21);B.vine(20.9,5,20.9,13,3.0,22);
+    [[1.6,10.4],[1.6,12.5],[3.4,12.5]].forEach(function(q){B.rbox(.7,1.5,.5,.06,B.mat('#4a6a6e','tin'),q[0],.75,q[1]);});
+    B.rug(11.5,2.6,1.2,'#7a3a3a','#c9a24a');
     for(let i=0;i<4;i++)B.box(.5,.04,.36,'#f3ead2',9.4+i*1.1,.03,5.5+(i%2)*.5,0,i*.5,0);
     B.bunting(1,14.05,20,14.05,2.3);
   },
@@ -109,14 +114,15 @@ PH.defLevel({
   id:'market',title:'第四關',name:'倒著下雨的天空市場',size:[24,21],next:'moon',
   reward:'echo',canName:'回音飛魚罐',trouble:'walk',coreR:99,cpTheft:[12,3],exitRoute:[[18.5,14.6,1],[17.6,17,1]],exitR:6,
   lockMsg:'收攤鐘響了！市場開始打烊折疊，三秒後拉起封鎖線。',
-  pal:{sky:'#f6a56b',sky2:'#7a5aa8',fog:'#e8a07a',fogNear:22,fogFar:64,wall:'#f3ead2',trim:'#e98fb0',floor:['#f1cf8e','#e9bf78','#bfe0d4','#a9d2c4'],block:'#d9694f',top:'#ffe9c4'},
-  mood:{hemi:['#ffd9b0','#7a5aa8',0.75],sun:['#ffe0a8',0.6,[4,12,14]]},
+  // 美術：青綠與奶油色攤位、暖色布旗、倒落雨線、漂浮雲塊；童話木造，不做寫實城市
+  pal:{sky:'#f0b07a',sky2:'#4f8a84',fog:'#e2b08c',fogNear:22,fogFar:64,wall:'#F1DFC0',trim:'#3d6b61',cap:'#F3BC68',floor:['#e0c48e','#d6b57c','#a9cfc0','#98c2b3'],block:'#3d8a7a',top:'#F1DFC0'},
+  mood:{hemi:['#ffe2c0','#3d6b61',0.56],sun:['#ffe0a8',0.42,[4,12,14]],amb:'#2c4f49',ambI:0.22},   // 實測：原本整片過曝
   ops:[['.',8,7,15,12],['.',11,5,12,6],['c',10,5,10,6],['.',8,1,15,4],['P',11,1,12,1],
     ['.',1,6,6,11],['.',7,8,7,9],[',',1,3,3,4],[',',2,5,2,5],
     ['.',17,6,22,12],['.',16,9,16,10],['%',20,6,20,12],
     ['.',1,13,6,19],['.',7,14,8,14],['.',8,13,8,13],['c',2,15,5,18],[',',3,16,4,17],[',',8,17,8,17],[',',7,17,7,17],
     [',',10,14,13,17],['.',11,13,12,13],['.',15,13,15,14],['.',16,14,16,14],['.',17,14,22,18],[',',19,16,22,18]],
-  legend:{'#':{k:'solid',h:1.5,m:'cloudwall'},c:{k:'gap',h:0.9,lo:0.32,m:'gapblock',col:'#b98250'},P:{k:'solid',h:0.9,m:'block',col:'#7a5aa8',top:'#ffd23f'}},
+  legend:{'#':{k:'solid',h:1.5,m:'cloudwall'},c:{k:'gap',h:0.9,lo:0.32,m:'gapblock',col:'#805238'},P:{k:'solid',h:0.9,m:'block',col:'#3d6b61',top:'#F3BC68'}},
   shade:[[18,6,22,12]],
   start:{x:11.5,y:16.5,box:'home'},
   ents:[
@@ -196,10 +202,11 @@ PH.defLevel({
     return {t:'帶回音飛魚罐上沙丁魚渡船的紙箱',x:21.5,y:17.5};
   },
   build:function(B,L){
-    B.cyl(.9,4.2,'#f3ead2',17,2.1,2);B.cone(1.2,1.3,'#d9694f',17,4.85,2);B.clock(17,3.2,2.92,-Math.PI/2);B.sign('收攤鐘塔',17,1.4,2.93,0,1.4,.34,'#7a5aa8','#fff');
+    B.cyl(.9,4.2,B.mat('#F1DFC0','plaster'),17,2.1,2);B.cone(1.2,1.3,'#3d8a7a',17,4.85,2);B.clock(17,3.2,2.92,-Math.PI/2);B.sign('收攤鐘塔',17,1.4,2.93,0,1.4,.34,'#7a5aa8','#fff');
     B.sign('交換所',12,2.6,1.06,0,2.2,.5,'#7a5aa8','#ffd23f');
     B.bunting(8,7.1,15,7.1,2.5);B.bunting(8,12.9,15,12.9,2.5);B.bunting(1,6.1,6,11.9,2.4);B.bunting(17,14.1,22,14.1,2.4);
-    B.lantern(8.3,2,7.3,'#ffcf7a');B.lantern(15.7,2,7.3,'#ffcf7a');B.lantern(8.3,2,12.7,'#ffcf7a');B.lantern(15.7,2,12.7,'#ffcf7a');B.lantern(11.5,1.8,14.3,'#ffcf7a');B.lantern(17.3,2,18.6,'#ffb86b');
+    B.lantern(8.3,2,7.3,'#F3BC68');B.lantern(15.7,2,7.3,'#F3BC68');B.lantern(8.3,2,12.7,'#F3BC68');B.lantern(15.7,2,12.7,'#F3BC68');B.lantern(11.5,1.8,14.3,'#F3BC68');B.lantern(17.3,2,18.6,'#F3BC68');
+    B.motes(12,10,22,18,3.5,30,'#ffd2a8','petal');B.motes(12,10,16,12,2.5,24,'#fff2d0','dust');
     B.box(2.2,.12,1.2,'#b98250',4,.5,9);B.cyl(.08,2.2,'#7a4a2b',4,1.1,7.6);B.box(3,.08,.12,'#7a4a2b',4,2.2,7.6);B.cyl(.5,.06,'#ffd23f',2.7,1.5,7.6);B.cyl(.5,.06,'#ffd23f',5.3,1.9,7.6);
     B.sign('巨大天平攤',4,2.7,6.06,0,2,.4,'#d9694f','#fff');B.sign('收銀抽屜',3.5,1.5,14.95,0,1.6,.36,'#b98250','#fff');B.sign('影魚步道',19,2.6,6.06,0,1.8,.4,'#16425b','#bfe0d4');
     B.box(3.6,.7,2.6,'#5fb3c9',20.5,-.05,17).castShadow=false;B.box(3.9,.5,.2,'#3fa9e0',20.5,.4,18.4);B.cyl(.06,2.6,'#7a4a2b',22.3,1.3,18.3);B.box(.9,.6,.04,'#fff',21.8,2.2,18.3);
@@ -229,16 +236,17 @@ PH.defLevel({
 PH.defLevel({
   id:'moon',title:'最終關',name:'罐頭月亮',size:[31,27],next:'escape',
   canName:'宇宙第一罐',maxAlert:0,
-  pal:{sky:'#0b0f2a',sky2:'#3b2f6b',fog:'#141a3c',fogNear:22,fogFar:70,wall:'#8a93a8',trim:'#ffd23f',floor:['#c9cfda','#b6bdcb','#e8d9a8','#dccb94'],block:'#7f8aa3',top:'#d5dde4'},
-  mood:{hemi:['#aab6ff','#3b2f6b',0.7],sun:['#fff2c4',0.55,[22,18,6]],amb:'#1a2040',dark:true},
+  // 美術：霧面錫銀、奶油月色、靛藍背景、柔金封印；大型物件仍有手工、彎曲、不對稱
+  pal:{sky:'#0a0f2c',sky2:'#2a2f6b',fog:'#141a3c',fogNear:22,fogFar:70,wall:'#a7adb8',trim:'#E8C77A',cap:'#E8C77A',wallTex:'tin',floor:['#ddd6c2','#d2cab5','#e8d9a8','#dccb94'],floorTex:'stone',block:'#9aa1ad',top:'#F1DFC0',blockTex:'tin'},
+  mood:{hemi:['#c4c8ff','#2a2f6b',0.6],sun:['#fff2c4',0.46,[22,18,6]],amb:'#1a2050',dark:true},
   ops:[['.',1,1,29,25],['M','o',15.5,12.5,9.4],[',','o',15.5,12.5,8.3],['H',13,1,18,2],
     ['H',1,1,6,6],['.',2,2,5,5],['c',3,6,3,6],['H',25,1,29,6],['.',26,2,28,5],
     ['C',1,15,6,15],['.',3,15,3,15],['c',5,15,5,15],['%',24,15,29,15],['c',29,15,29,15],['.',15,21,16,21],
     ['P',15,4,15,4],['J',13,4,14,4],['J',14,5,14,5],['%',13,6,13,6],['%',12,5,12,5],
     ['L',11,9,12,9],['L',19,9,20,9],['L',11,16,12,16],['c',19,16,20,16],['o',15,12,15,12],
     ['J',21,11,23,13],[',',22,12,22,12]],
-  legend:{M:{k:'solid',h:2.6,m:'rim'},J:{k:'solid',h:1.3,m:'block',col:'#5a6a8a',top:'#7fd0e6'},L:{k:'solid',h:0.55,m:'block',col:'#e8d9a8',top:'#ffd23f'},
-    H:{k:'solid',h:2.4,m:'block',col:'#6f7a94',top:'#aab4c8'},P:{k:'solid',h:0.9,m:'block',col:'#3b2f6b',top:'#ffd23f'},c:{k:'gap',h:1.0,lo:0.34,m:'gapblock',col:'#7f8aa3'}},
+  legend:{M:{k:'solid',h:2.6,m:'rim'},J:{k:'solid',h:1.3,m:'block',col:'#6f7890',top:'#86E0C2'},L:{k:'solid',h:0.55,m:'block',col:'#e8d9a8',top:'#E8C77A',tex:'stone'},
+    H:{k:'solid',h:2.4,m:'block',col:'#8a91a0',top:'#c4c9d4'},P:{k:'solid',h:0.9,m:'block',col:'#2a2f6b',top:'#E8C77A'},c:{k:'gap',h:1.0,lo:0.34,m:'gapblock',col:'#8a91a0'}},
   shade:[[10,5,13,8],[24,13,29,17]],
   start:{x:11.5,y:24.5,box:'home'},
   boss:{c:[15.5,12.5],R:8.3,plate:[8.6,12.5],proj:[13.5,5.5],peg:[15.5,12.5],cold:[19.5,12.5,2.1],ringR:5,rest:[10,14,1.1],start:[15.5,9.5],safe:[14.5,19.2],anchors:['BA','BB','BC','BD']},
@@ -324,8 +332,9 @@ PH.defLevel({
     B.torus(.9,.2,'#ffd23f',3.5,2.7,4.5,Math.PI/2,0);B.torus(.5,.14,'#aab4c8',4.6,2.7,3.2,Math.PI/2,0);
     B.cyl(.22,5,'#7fd0e6',27,2.6,9.5,Math.PI/2,0,0);B.cyl(.22,3.5,'#7fd0e6',24.6,2.6,7.7,0,0,Math.PI/2);
     B.box(.3,2.6,.3,'#aab4c8',26.8,1.3,23.4);B.box(2.4,.3,.3,'#aab4c8',25.7,2.6,23.4);B.cone(.4,.9,'#ffd23f',24.6,2.1,23.4,Math.PI,0,0);
-    B.lantern(11.5,1.5,25.6,'#ffcf7a');B.lantern(15.5,3.0,21.9,'#ffb86b');B.lantern(2,1.8,7.4,'#ffcf7a');B.lantern(24.4,1.8,7.3,'#7fd0e6');
+    B.lantern(11.5,1.5,25.6,'#F3BC68');B.lantern(15.5,3.0,21.9,'#F3BC68');B.lantern(2,1.8,7.4,'#F3BC68');B.lantern(24.4,1.8,7.3,'#86E0C2');
     B.bunting(1,25.9,29,25.9,2.3);
+    B.motes(15.5,12.5,26,22,4,50,'#fff2c4','star');   // 星塵（不在場地中央加光柱，以免蓋住總督的招式預告）
     [[8,22.5],[21,24.2],[7.2,3.4],[22.5,2.2],[28.4,19]].forEach(function(q,i){B.rock(q[0],q[1],.5+i%3*.2,'#9aa3b8');});
   },
   checks:[
@@ -350,8 +359,8 @@ PH.defLevel({
 PH.defLevel({
   id:'escape',title:'最終關',name:'月亮消氣逃亡',size:[44,9],next:null,final:true,startCan:true,maxAlert:0,
   canName:'宇宙第一罐',fallMsg:'噗通！爬回最近的落腳點。月亮還在消氣，動作快。',
-  pal:{sky:'#0b0f2a',sky2:'#6b3f6b',fog:'#241a3c',fogNear:20,fogFar:60,wall:'#8a93a8',trim:'#ffd23f',floor:['#c9cfda','#b6bdcb','#f1cf8e','#e9bf78'],block:'#7f8aa3',top:'#d5dde4',liquid:'#f6992b',liquidY:-0.32},
-  mood:{hemi:['#aab6ff','#6b3f6b',0.75],sun:['#ffe0a8',0.55,[10,14,8]],amb:'#1a2040',dark:true},
+  pal:{sky:'#0a0f2c',sky2:'#5a3a6b',fog:'#221a3c',fogNear:20,fogFar:60,wall:'#a7adb8',trim:'#E8C77A',cap:'#E8C77A',wallTex:'tin',floor:['#ddd6c2','#d2cab5','#e0c48e','#d6b57c'],floorTex:'stone',block:'#9aa1ad',top:'#F1DFC0',blockTex:'tin',liquid:'#E39A55',liquidY:-0.32},
+  mood:{hemi:['#c4c8ff','#5a3a6b',0.62],sun:['#ffe0a8',0.46,[10,14,8]],amb:'#1a2050',dark:true,alarm:'#E77863'},
   ops:[['.',1,2,3,6],['~',4,2,10,6],['.',7,3,7,5],['.',11,2,13,6],['~',14,2,21,6],['.',22,2,24,6],
     [',',25,2,34,6],['L',28,3,28,4],['L',31,4,31,5],[',',35,2,42,6],['H',38,2,38,6],['c',38,2,38,2]],
   start:{x:2.5,y:4.5,yaw:0},
@@ -391,8 +400,9 @@ PH.defLevel({
     L.gx.gov=B.governor(-3,4.5);
     B.sign('吐司浮台',7,2.4,1.98,Math.PI,1.6,.34,'#d9694f','#fff');B.sign('襪子船',17.5,2.4,1.98,Math.PI,1.4,.34,'#16425b','#fff');
     B.sign('夢境公車',29.5,2.4,1.98,Math.PI,1.6,.34,'#7a5aa8','#fff');B.sign('原本的紙箱',40.5,2.4,1.98,Math.PI,2,.34,'#3b2f6b','#ffd23f');
-    B.lantern(12,1.8,2.3,'#ffcf7a');B.lantern(23,1.8,2.3,'#ffcf7a');B.lantern(36,1.8,2.3,'#ffcf7a');B.lantern(41.5,1.9,2.4,'#ffb86b');
+    B.lantern(12,1.8,2.3,'#F3BC68');B.lantern(23,1.8,2.3,'#F3BC68');B.lantern(36,1.8,2.3,'#F3BC68');B.lantern(41.5,1.9,2.4,'#F3BC68');
     B.bunting(1,1.98,42,1.98,2.9);
+    B.motes(22,4.5,44,8,4,60,'#fff2c4','star');
     B.shaft(41.5,4.5,1.2,5,'#fff2c4');
   },
   draw:function(L,t){

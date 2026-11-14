@@ -93,7 +93,7 @@ UI.sync=function(dt){
   syncKeys(P);
   // 紙箱裡的窺視縫
   const inBox=play&&P.hidden&&P.hidden.t==='box';show('slit',!!inBox);
-  if(inBox)$('slit').style.setProperty('--h',(31-P.lift*18)+'%');
+  if(inBox)$('slit').style.setProperty('--h',(21-P.lift*14)+'%');   // 實測：上下各遮 31% 時畫面六成是紙板，看不到目標
   $('stage').classList.toggle('drawing',!!SM.draw);
 };
 
